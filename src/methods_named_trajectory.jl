@@ -35,7 +35,7 @@ function StructKnotPoint.KnotPoint(
 )
     @assert 1 ≤ t ≤ Z.T
     timestep = get_timesteps(Z)[t]
-    return KnotPoint(t, Z.data[:, t], timestep, Z.components, Z.names, Z.control_names)
+    return KnotPoint(t, view(Z.data, :, t), timestep, Z.components, Z.names, Z.control_names)
 end
 
 """
