@@ -7,7 +7,7 @@ function Base.getproperty(slice::KnotPoint, symb::Symbol)
         return getfield(slice, symb)
     else
         indices = slice.components[symb]
-        return slice.data[indices]
+        return view(slice.data, indices)
     end
 end
 
