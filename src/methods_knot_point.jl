@@ -22,14 +22,14 @@ end
 
 function Base.setproperty!(slice::KnotPoint, symb::Symbol, val::Any)
     if symb in fieldnames(KnotPoint)
-        setfield!(slice, symb, val)
+        setfield!(slice, symb, val) # will throw error since KnotPoint is an immutable struct
     else
         update!(slice, symb, val)
     end
 end
 
 
-function Base.update!(slice::KnotPoint, symb::Symbol, data::AbstractVector{Float64})
+function update!(slice::KnotPoint, symb::Symbol, data::AbstractVector{Float64})
     @assert symb in slice.names
     @assert size(data, 1) == (slice.components[symb].stop - slice.components[symb].start + 1)
 
