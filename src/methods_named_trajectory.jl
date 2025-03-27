@@ -78,7 +78,7 @@ function Base.getproperty(traj::NamedTrajectory, symb::Symbol)
         return getfield(traj, symb)
     else
         indices = traj.components[symb]
-        return traj.data[indices, :]
+        return view(traj.data, indices, :)
     end
 end
 
