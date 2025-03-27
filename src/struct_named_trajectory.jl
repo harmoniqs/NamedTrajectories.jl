@@ -455,7 +455,7 @@ function NamedTrajectory(
 end
 
 """
-    NamedTrajectory(data, componets; kwargs...)
+    NamedTrajectory(data, components; kwargs...)
 
     # Arguments
     - `data::AbstractMatrix{R}`: Trajectory data.
