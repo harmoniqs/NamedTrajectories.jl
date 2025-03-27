@@ -81,3 +81,126 @@ println(merged_traj.x == traj.x, ", ", merged_traj.x == conflicting_traj.x)
 
 # Merged names
 merged_traj.names
+
+#=
+## Advanced usage
+
+Sometimes it may be desirable to have direct access to the underlying data matrix/vector associated with the trajectory.
+In other circumstances it is more useful to employ the built-in per-component and per-knot-point indexing functionality.
+We detail the relationship between these different methods of access here.
+
+=#
+
+traj = rand(NamedTrajectory, 5)
+
+# The "backing store" of a `NamedTrajectory` is its `datavec` field, a `Vector{<:Real}`:
+
+traj.datavec
+
+# The `data` field holds a reshaped "view" of the "backing store", in a form that is somewhat easier to work with:
+
+traj.data
+
+# ### Indexing
+
+# The `data` matrix is of dimension `(traj.dim, traj.T)`, where `length(traj.names) == traj.dim`
+
+# The nth component's indices are given by `traj.components[traj.names[n]]`
+
+println(traj.names)
+println(traj.components)
+
+# For instance, the indices of a given component at a given knot point are given as follows:
+
+idx = 1 # x
+t = 3
+slice = traj.datavec[((t - 1) * traj.T) .+ traj.components[traj.names[idx]]]
+println(slice == traj[t].x == traj.x[:, t])
+
+# More generally, the indices of a given component across all knot points are given as follows:
+
+idx = 1 # x
+println([((k - 1) * traj.dim) .+ getproperty(traj.components, traj.names[idx]) for k in 1:traj.T])
+idx = 2 # u
+println([((k - 1) * traj.dim) .+ getproperty(traj.components, traj.names[idx]) for k in 1:traj.T])
+
+
+# TODO: etc.
+
+# ### Writability
+
+# #### Views and Backing Stores
+
+# In Julia, a "view" (`SubArray`) is intrinsically linked to some "parent" Array. Any in-place modification of one is reflected by the other.
+
+# The following are "safe" operations on a NamedTrajectory (in-place modification of the `datavec`):
+
+traj = rand(NamedTrajectory, 5)
+traj.datavec
+println(traj.datavec)
+traj.datavec[1] *= 0.
+println(traj.datavec)
+traj.datavec[:] = rand(length(traj.datavec))
+println(traj.datavec)
+
+# The following is an example of an "unsafe" operation (non-in-place modification of the `datavec`):
+
+traj = rand(NamedTrajectory, 5)
+println(traj.datavec == traj.data[:])
+traj.datavec = rand(length(traj.datavec))
+println(traj.datavec == traj.data[:]) # the `data` field now points to a "backing store" that is no longer accessible via `traj.datavec`; this will lead to undefined behavior:
+
+# The following is likewise an "unsafe" operation (non-in-place modification of `data`, replacing a "view" of `datavec` with a "raw" matrix):
+traj = rand(NamedTrajectory, 5)
+println(traj.datavec == traj.data[:])
+traj.data = rand(size(traj.data)...)
+println(traj.datavec == traj.data[:]) # the `data` field no longer points to any "backing store", i.e. is independent of `traj.datavec`; this will lead to undefined behavior:
+
+# In general, reassigning the values of any of the fields of a trajectory may lead to undefined behavior:
+fieldnames(NamedTrajectory)
+
+#=
+TODO:
+- Prevent this issue by catching attempts to set sensitive fields in `Base.setproperty!(::NamedTrajectory, ::Symbol, ::Any)` (`datavec` and `data` are the primary concern in this regard; however, issuing a warning of some kind may be appropriate).
+    - Particularly because it is confusing that `traj.datavec = zeros(length(datavec))` is "discouraged", while `traj.x = zeros(traj.dims.x, traj.T)` and `traj[1].x = zeros(traj.dims.x)` are both valid.
+=#
+
+# #### Components and Knot Points
+
+traj = rand(NamedTrajectory, 5)
+
+# Trajectory components are accessible (as a "view") via `getproperty`:
+
+traj.x
+
+# Components are also writable via `setproperty!`:
+
+traj.x = rand(traj.dims.x, traj.T)
+traj.x
+
+# or may be modified directly:
+
+traj.x[1] *= 0.
+traj.x
+
+# Knot points are likewise accessible via `getindex`:
+
+traj[1]
+
+# A `KnotPoint` behaves much like a `NamedTrajectory`, with respect to getting, setting, and/or modifying its components:
+
+traj[1].u
+
+#
+
+traj[1].u = rand(traj.dims.u)
+traj[1].u
+
+#
+
+traj[1].u[1] *= 0
+traj[1].u
+
+# The parent trajectory will reflect any modifications made in this fashion:
+
+traj.datavec
