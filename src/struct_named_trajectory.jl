@@ -92,8 +92,8 @@ end
     - `goal`: Goal for the states.
 """
 function NamedTrajectory(
-    component_data::NamedTuple{names, <:Tuple{Vararg{vals}}} where
-        {names, vals <: AbstractMatrix{R}};
+    component_data::NamedTuple{names, <:Tuple{Vararg{AbstractMatrix{R}}}} where
+        {names};
     controls::Union{Symbol, Tuple{Vararg{Symbol}}}=(),
     timestep::Union{Nothing,Symbol,R}=nothing,
     bounds=(;),
