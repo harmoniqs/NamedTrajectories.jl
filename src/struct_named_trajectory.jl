@@ -83,7 +83,7 @@ end
     NamedTrajectory(component_data; controls=(), timestep=nothing, bounds, initial, final, goal)
 
     # Arguments
-    - `component_data::NamedTuple{names, <:Tuple{Vararg{vals}}} where {names, vals <: AbstractMatrix{R}}`: Components data.
+    - `component_data::NamedTuple{names, <:Tuple{Vararg{AbstractMatrix{R}}}} where {names}`: Components data.
     - `controls`: The control variable in component_data, should be type of `Symbol` among `component_data`.
     - `timestep`: Discretizing time step in `component_data`, should be type of `Symbol` among `component_data`.
     - `bounds`: Bounds of the trajectory.
@@ -92,8 +92,7 @@ end
     - `goal`: Goal for the states.
 """
 function NamedTrajectory(
-    component_data::NamedTuple{names, <:Tuple{Vararg{AbstractMatrix{R}}}} where
-        {names};
+    component_data::NamedTuple{names, <:Tuple{Vararg{AbstractMatrix{R}}}} where {names};
     controls::Union{Symbol, Tuple{Vararg{Symbol}}}=(),
     timestep::Union{Nothing,Symbol,R}=nothing,
     bounds=(;),
@@ -235,7 +234,7 @@ end
     NamedTrajectory(component_data; kwargs...)
 
     # Arguments
-    - `component_data::NamedTuple{names, <:Tuple{Vararg{vals}}} where {names, vals <: AbstractMatrix{R}}`: Components data.
+    - `component_data::NamedTuple`: Components data. Values should be of type `Union{AbstractVector{<:Real}, AbstractMatrix{<:Real}}`.
     - `kwargs...`: The other key word arguments.
 """
 function NamedTrajectory(
