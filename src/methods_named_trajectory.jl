@@ -386,9 +386,7 @@ function update!(traj::NamedTrajectory, name::Symbol, data::AbstractMatrix{Float
     @assert name ∈ traj.names
     @assert size(data, 1) == traj.dims[name]
     @assert size(data, 2) == traj.T
-    # TODO: test to see if updating both matrix and vec is necessary
     traj.data[traj.components[name], :] = data
-    traj.datavec = vec(view(traj.data, :, :))
     return nothing
 end
 
