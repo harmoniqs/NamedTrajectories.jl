@@ -1279,4 +1279,26 @@ end
     @test get_suffix(new_traj, suffix, remove=true) == free_time_traj
 end
 
+@testitem "Updating trajectory components via view" begin
+    traj = rand(NamedTrajectory, 5)
+
+    x_orig = deepcopy(traj.x[:, :])
+    u_orig = deepcopy(traj.u[:, :])
+
+    x_new = rand(size(x_orig)...)
+    u_new = rand(size(u_orig)...)
+
+    traj.x = deepcopy(x_new)
+    @test traj.x == traj.data[traj.components.x, :] == x_new
+
+    traj.u = deepcopy(u_new)
+    @test traj.u == traj.data[traj.components.u, :] == u_new
+
+    traj.data[traj.components.x, :] = deepcopy(x_orig)
+    @test traj.x == traj.data[traj.components.x, :] == x_orig
+
+    traj.data[traj.components.u, :] = deepcopy(u_orig)
+    @test traj.u == traj.data[traj.components.u, :] == u_orig
+end
+
 end

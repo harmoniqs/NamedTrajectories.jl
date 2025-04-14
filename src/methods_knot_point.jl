@@ -1,5 +1,7 @@
 module MethodsKnotPoint
 
+using TestItems
+
 using ..StructKnotPoint
 
 function Base.getproperty(slice::KnotPoint, symb::Symbol)
@@ -41,5 +43,29 @@ function update!(slice::KnotPoint, symb::Symbol, data::AbstractVector{Float64})
     return nothing
 end
 
+
+@testitem "Updating trajectory knot points via view" begin
+    traj = rand(NamedTrajectory, 5)
+
+    x_orig = deepcopy(traj.x[:, :])
+    u_orig = deepcopy(traj.u[:, :])
+
+    x_new = rand(size(x_orig)...)
+    u_new = rand(size(u_orig)...)
+
+    idx = rand(1:traj.T)
+
+    traj[idx].x = deepcopy(x_new[:, idx])
+    @test traj.x[:, idx] == traj.data[traj.components.x, idx] == traj[idx].x == x_new[:, idx]
+
+    traj[idx].u = deepcopy(u_new[:, idx])
+    @test traj.u[:, idx] == traj.data[traj.components.u, idx] == traj[idx].u == u_new[:, idx]
+
+    traj.data[traj.components.x, idx] = deepcopy(x_orig[:, idx])
+    @test traj.x[:, idx] == traj.data[traj.components.x, idx] == traj[idx].x == x_orig[:, idx]
+
+    traj.data[traj.components.u, idx] = deepcopy(u_orig[:, idx])
+    @test traj.u[:, idx] == traj.data[traj.components.u, idx] == traj[idx].u == u_orig[:, idx]
+end
 
 end
