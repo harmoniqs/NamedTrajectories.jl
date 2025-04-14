@@ -29,6 +29,13 @@ using ..StructKnotPoint
 # Base indexing
 # -------------------------------------------------------------- #
 
+"""
+    KnotPoint(Z::NamedTrajectory, t::Int)
+
+    # Arguments
+    - `Z::NamedTrajectory`: The trajectory from which the KnotPoint is taken.
+    - `t::Int`: The timestep of the KnotPoint.
+"""
 function StructKnotPoint.KnotPoint(
     Z::NamedTrajectory,
     t::Int
@@ -71,7 +78,7 @@ Base.getindex(traj::NamedTrajectory, symb::Symbol) = getproperty(traj, symb)
 """
     getproperty(traj, symb::Symbol)
 
-Returns the component of the trajectory with name `symb` or the property of the trajectory with name `symb`.
+Returns the component of the trajectory with name `symb` (as a view) or the property of the trajectory with name `symb`.
 """
 function Base.getproperty(traj::NamedTrajectory, symb::Symbol)
     if symb ∈ fieldnames(NamedTrajectory)
@@ -85,7 +92,7 @@ end
 """
     setproperty!(traj, name::Symbol, val::Any)
 
-Dispatches setting properties of trajectories as either setting a component or a property via `setfield!` or `update!`.
+Dispatches setting properties of trajectories as either setting a component or a property via `update!` or `setfield!`, respectively.
 """
 function Base.setproperty!(traj::NamedTrajectory, symb::Symbol, val::Any)
     if symb ∈ fieldnames(NamedTrajectory)

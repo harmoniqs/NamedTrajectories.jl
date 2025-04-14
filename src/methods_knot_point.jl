@@ -4,6 +4,12 @@ using TestItems
 
 using ..StructKnotPoint
 
+
+"""
+    getproperty(slice::KnotPoint, symb::Symbol)
+
+Returns the component of the knot point with name `symb` (as a view) or the property of the knot point with name `symb`.
+"""
 function Base.getproperty(slice::KnotPoint, symb::Symbol)
     if symb in fieldnames(KnotPoint)
         return getfield(slice, symb)
@@ -22,6 +28,11 @@ function Base.getindex(slice::KnotPoint, symb::Symbol) # is this method redundan
     end
 end
 
+"""
+    setproperty!(slice::KnotPoint, symb::Symbol, val::Any)
+
+Dispatches setting properties of knot points as either setting a component or a property via `update!` or `setfield!`, respectively.
+"""
 function Base.setproperty!(slice::KnotPoint, symb::Symbol, val::Any)
     if symb in fieldnames(KnotPoint)
         setfield!(slice, symb, val) # will throw error since KnotPoint is an immutable struct
@@ -35,6 +46,11 @@ function Base.setindex!(slice::KnotPoint, symb::Symbol, val::Any)
 end
 
 
+"""
+    update!(slice::KnotPoint, symb::Symbol, data::AbstractVector{Float64})
+
+Update a component of the knot point.
+"""
 function update!(slice::KnotPoint, symb::Symbol, data::AbstractVector{Float64})
     @assert symb in slice.names
     @assert size(data, 1) == (slice.components[symb].stop - slice.components[symb].start + 1)
