@@ -125,8 +125,6 @@ idx = 2 # u
 println([((k - 1) * traj.dim) .+ getproperty(traj.components, traj.names[idx]) for k in 1:traj.T])
 
 
-# TODO: etc.
-
 # ### Writability
 
 # #### Views and Backing Stores

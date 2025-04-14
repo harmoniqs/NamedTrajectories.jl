@@ -4,7 +4,8 @@
 ## NamedTrajectory methods
 ```@autodocs
 Modules = [
-    NamedTrajectories.MethodsNamedTrajectory
+    NamedTrajectories.MethodsNamedTrajectory,
+    NamedTrajectories.MethodsKnotPoint
 ]
 ```
 
@@ -18,7 +19,8 @@ Modules = [
 ## Struct Methods
 ```@autodocs
 Modules = [
-    StructNamedTrajectory
+    StructNamedTrajectory,
+    StructKnotPoint
 ]
 ```
 
