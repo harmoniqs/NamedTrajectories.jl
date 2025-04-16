@@ -29,13 +29,20 @@ using ..StructKnotPoint
 # Base indexing
 # -------------------------------------------------------------- #
 
+"""
+    KnotPoint(Z::NamedTrajectory, t::Int)
+
+    # Arguments
+    - `Z::NamedTrajectory`: The trajectory from which the KnotPoint is taken.
+    - `t::Int`: The timestep of the KnotPoint.
+"""
 function StructKnotPoint.KnotPoint(
     Z::NamedTrajectory,
     t::Int
 )
     @assert 1 ≤ t ≤ Z.T
     timestep = get_timesteps(Z)[t]
-    return KnotPoint(t, Z.data[:, t], timestep, Z.components, Z.names, Z.control_names)
+    return KnotPoint(t, view(Z.data, :, t), timestep, Z.components, Z.names, Z.control_names)
 end
 
 """
@@ -71,21 +78,21 @@ Base.getindex(traj::NamedTrajectory, symb::Symbol) = getproperty(traj, symb)
 """
     getproperty(traj, symb::Symbol)
 
-Returns the component of the trajectory with name `symb` or the property of the trajectory with name `symb`.
+Returns the component of the trajectory with name `symb` (as a view) or the property of the trajectory with name `symb`.
 """
 function Base.getproperty(traj::NamedTrajectory, symb::Symbol)
     if symb ∈ fieldnames(NamedTrajectory)
         return getfield(traj, symb)
     else
         indices = traj.components[symb]
-        return traj.data[indices, :]
+        return view(traj.data, indices, :)
     end
 end
 
 """
     setproperty!(traj, name::Symbol, val::Any)
 
-Dispatches setting properties of trajectories as either setting a component or a property via `setfield!` or `update!`.
+Dispatches setting properties of trajectories as either setting a component or a property via `update!` or `setfield!`, respectively.
 """
 function Base.setproperty!(traj::NamedTrajectory, symb::Symbol, val::Any)
     if symb ∈ fieldnames(NamedTrajectory)
@@ -379,9 +386,7 @@ function update!(traj::NamedTrajectory, name::Symbol, data::AbstractMatrix{Float
     @assert name ∈ traj.names
     @assert size(data, 1) == traj.dims[name]
     @assert size(data, 2) == traj.T
-    # TODO: test to see if updating both matrix and vec is necessary
     traj.data[traj.components[name], :] = data
-    traj.datavec = vec(view(traj.data, :, :))
     return nothing
 end
 
@@ -1277,6 +1282,28 @@ end
     new_traj = add_suffix(free_time_traj, suffix)
     @test get_suffix(new_traj, suffix) == new_traj
     @test get_suffix(new_traj, suffix, remove=true) == free_time_traj
+end
+
+@testitem "Updating trajectory components via view" begin
+    traj = rand(NamedTrajectory, 5)
+
+    x_orig = deepcopy(traj.x[:, :])
+    u_orig = deepcopy(traj.u[:, :])
+
+    x_new = rand(size(x_orig)...)
+    u_new = rand(size(u_orig)...)
+
+    traj.x = deepcopy(x_new)
+    @test traj.x == traj.data[traj.components.x, :] == x_new
+
+    traj.u = deepcopy(u_new)
+    @test traj.u == traj.data[traj.components.u, :] == u_new
+
+    traj.data[traj.components.x, :] = deepcopy(x_orig)
+    @test traj.x == traj.data[traj.components.x, :] == x_orig
+
+    traj.data[traj.components.u, :] = deepcopy(u_orig)
+    @test traj.u == traj.data[traj.components.u, :] == u_orig
 end
 
 end

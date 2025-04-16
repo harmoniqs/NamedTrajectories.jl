@@ -4,6 +4,9 @@ export KnotPoint
 
 using ..StructNamedTrajectory
 
+"""
+    KnotPoint constructor
+"""
 struct KnotPoint
     t::Int
     data::AbstractVector{Float64}
