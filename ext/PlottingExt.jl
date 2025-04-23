@@ -70,8 +70,8 @@ Makie.plottype(::NamedTrajectory, ::Symbol) = Series
         linestyle = theme(scene, :linestyle),
         linewidth = theme(scene, :linewidth),
         marker = theme(scene, :marker),
-        markersize = theme(scene, :markersize),
-        # Merge: If true, all components are plotted with the same label
+        markersize = 0.0,
+        # merge: if true, all components are plotted with the same label
         merge = false
     )
 end
@@ -199,7 +199,6 @@ end
 # -------------------------------------------------------------- #
 
 # TODO:
-# - A better way to handle empty Symbols[]?
 # - Should we have a default theme?
 # - Allow for transformations to use the entire knot point? No symbol?
 
@@ -263,6 +262,10 @@ function Makie.plot(
         names = [names]
     end
 
+    if traj.timestep isa Symbol && ignore_timestep
+        names = filter(x -> x != traj.timestep, names)
+    end
+
     if merge_labels isa Bool
         merge_labels = fill(merge_labels, length(names))
     end
@@ -279,10 +282,6 @@ function Makie.plot(
     # Default components
     # ------------------
     for (i, name) in enumerate(names)
-        if traj.timestep isa Symbol && name == traj.timestep && ignore_timestep
-            continue
-        end
-
         ax = Axis(
             fig[i, 1],
             title = i == 1 ? "Named Trajectory" : "",
@@ -299,7 +298,7 @@ function Makie.plot(
     end
 
     for i in 1:length(names) - 1
-        rowgap!(fig.layout, i, 0.0)
+        rowgap!(fig.layout, i, Relative(0.015))
     end
 
 
@@ -538,6 +537,15 @@ end
 @testitem "create figure with a theme" begin
     using CairoMakie
     f = plot(theme_dark(), rand(NamedTrajectory, 10, state_dim=3))
+    @test f isa Figure
+end
+
+@testitem "default plots" begin
+    using CairoMakie
+    # test passing in series kwargs
+    f = plot(rand(NamedTrajectory, 10, state_dim=3), free_time=true)
+    @test f isa Figure
+    f = plot(rand(NamedTrajectory, 10, state_dim=3), free_time=false)
     @test f isa Figure
 end
 
