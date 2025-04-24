@@ -1,0 +1,58 @@
+name: "Reusable Build Workflow"
+
+on:
+  workflow_call:
+    inputs:
+      self-hosted:
+        description: "Run the job needs on a self hosted machine"
+        default: false
+        required: false
+        type: boolean
+      os:
+        description: "The machine configuration on which the job needs to be run."
+        default: "ubuntu-latest"
+        required: false
+        type: string
+      continue-on-error:
+        description: "Prevent the workflow run from failing if/when the job fails"
+        required: false
+        type: boolean
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+concurrency:
+  # Skip intermediate builds: always.
+  # Cancel intermediate builds: only if it is a pull request build.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  build-proj:
+    name: Julia Build ${{ matrix.version }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    continue-on-error: ${{ inputs.continue-on-error }}
+    runs-on: "${{ inputs.self-hosted && 'self-hosted' || inputs.os }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.10'
+          - '1.11'
+        arch:
+          - x64
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v2
+      # with:
+      #     token: "${{ secrets.GITHUB_TOKEN }}"
+      - uses: julia-actions/julia-buildpkg@v1
