@@ -120,12 +120,12 @@ function NamedTrajectory(
             for bound ∈ bounds
     ])
 
-    if timestep isa Symbol && !in(timestep, controls)
-        controls = (controls..., timestep)
+
+    if timestep isa Symbol 
+        @assert timestep ∉ controls "timestep symbol should not be in controls, it is handled indvidually"
     end
 
-
-    state_names = Tuple(k for k ∈ names if k ∉ controls)
+    states = Tuple(name for name ∈ names if name ∉ (controls..., timestep))
 
     bounds_dict = OrderedDict{Symbol,Any}(pairs(bounds))
 
@@ -153,7 +153,7 @@ function NamedTrajectory(
         end
     end
 
-    data = vcat([val for (key, val) ∈ component_data_pairs]...)
+    data = vcat([val for (name, val) ∈ component_data_pairs]...)
     dim, T = size(data)
 
     # store data matrix as view of datavec
@@ -173,8 +173,8 @@ function NamedTrajectory(
 
     # add states and controls to dims
 
-    dim_states = sum([dim for (k, dim) in dims_pairs if k ∉ controls])
-    dim_controls = sum([dim for (k, dim) in dims_pairs if k ∈ controls])
+    dim_states = sum([dim for (name, dim) in dims_pairs if name ∈ states])
+    dim_controls = sum([dim for (name, dim) in dims_pairs if name ∈ controls])
 
     push!(dims_pairs, :states => dim_states)
     push!(dims_pairs, :controls => dim_controls)
@@ -184,8 +184,8 @@ function NamedTrajectory(
     # add states and controls to components
 
     temp_comp_tuple = NamedTuple(comp_pairs)
-    states_comps = vcat([temp_comp_tuple[k] for k ∈ keys(component_data) if k ∉ controls]...)
-    controls_comps = vcat([temp_comp_tuple[k] for k ∈ keys(component_data) if k ∈ controls]...)
+    states_comps = vcat([temp_comp_tuple[name] for name ∈ keys(component_data) if name ∈ states]...)
+    controls_comps = vcat([temp_comp_tuple[name] for name ∈ keys(component_data) if name ∈ controls]...)
 
     push!(comp_pairs, :states => states_comps)
     push!(comp_pairs, :controls => controls_comps)
@@ -194,7 +194,7 @@ function NamedTrajectory(
 
     # global dims
 
-    global_dims_pairs = [(k => length(v)) for (k, v) ∈ pairs(global_data)]
+    global_dims_pairs = [(name => length(v)) for (name, v) ∈ pairs(global_data)]
     global_comps_pairs::Vector{Pair{Symbol, AbstractVector{Int}}} = []
     
     running_global_dim = 0
@@ -226,7 +226,7 @@ function NamedTrajectory(
         global_dims,
         global_comps,
         names,
-        state_names,
+        states,
         controls
     )
 end

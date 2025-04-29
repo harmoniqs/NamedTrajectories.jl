@@ -298,9 +298,11 @@ function Makie.plot(
         Legend(fig[i, 2], ax, merge=merge)
     end
 
-    for i in 1:length(names) - 1
-        rowgap!(fig.layout, i, 0.0)
-    end
+    # TODO: i don't really like having no row gap tbh
+
+    # for i = 1:length(names) - 1
+    #     rowgap!(fig.layout, i, 0.0)
+    # end
 
 
     # Transformations

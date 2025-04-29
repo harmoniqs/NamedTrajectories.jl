@@ -385,6 +385,8 @@ function update!(traj::NamedTrajectory, name::Symbol, data::AbstractMatrix{Float
     return nothing
 end
 
+# TODO: add method for updating knot point
+
 """
     update!(traj, datavec::AbstractVector{Float64})
 
@@ -845,7 +847,7 @@ end
 Returns the duration of a trajectory.
 """
 function get_duration(traj::NamedTrajectory)
-    return get_times(traj)[end]
+    return sum(get_timesteps(traj))
 end
 
 
