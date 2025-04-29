@@ -1,0 +1,60 @@
+name: Julia Documentation Workflow Harmoniqs
+
+on:
+  workflow_call:
+    inputs:
+      self-hosted:
+        description: "Run the job needs on a self hosted machine"
+        default: false
+        required: false
+        type: boolean
+      os:
+        description: "The machine configuration on which the job needs to be run."
+        default: "ubuntu-latest"
+        required: false
+        type: string
+      continue-on-error:
+        description: "Prevent the workflow run from failing if/when the job fails"
+        default: false
+        required: false
+        type: boolean
+
+  push:
+    branches: [ "main" ]
+    tags: '*'
+  pull_request:
+    branches: [ "main" ]
+
+
+jobs:
+  make-docs:
+    # for cache + old deploy
+    permissions:
+      actions: write
+      contents: write
+    
+    name: Julia Build Docs ${{ matrix.version }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    continue-on-error: ${{ inputs.continue-on-error }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: '1.11'
+      - uses: julia-actions/cache@v2
+      - name: Install dependencies
+        run: julia --project=docs -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+      - name: Build documentation
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # If authenticating with GitHub Actions token
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }} # If authenticating with SSH deploy key
+        run: julia --project=docs docs/make.jl
+      - name: Save Julia depot cache on cancel or failure
+        id: julia-cache-save
+        if: cancelled() || failure()
+        uses: actions/cache/save@v4
+        with: 
+          path: |
+            ${{ steps.julia-cache.outputs.cache-paths }}
+          key: ${{ steps.julia-cache.outputs.cache-key }}
