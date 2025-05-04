@@ -507,7 +507,8 @@ function NamedTrajectory(
     initial = NamedTuple([(k => traj.initial[k]) for k ∈ keys(comps) if k ∈ keys(traj.initial)])
     final = NamedTuple([(k => traj.final[k]) for k ∈ keys(comps) if k ∈ keys(traj.final)])
     goal = NamedTuple([(k => traj.goal[k]) for k ∈ keys(comps) if k ∈ keys(traj.goal)])
-    global_data = NamedTuple([(k => traj.global_data[k]) for k ∈ keys(comps) if k ∈ keys(traj.global_data)])
+    # global comps are separate from comps
+    global_data = deepcopy(traj.global_data)
 
     return NamedTrajectory(
         comps;
