@@ -55,9 +55,6 @@ end
 # Allow transform to be passed to the plotting function
 Makie.used_attributes(::Type{<:Series}, ::NamedTrajectory, ::Symbol) = (:transform,)
 
-# Allow plot to be called on NamedTrajectory
-Makie.plottype(::NamedTrajectory, ::Symbol) = Series
-
 # -------------------------------------------------------------- #
 # Plot trajectories by name with recipe
 # -------------------------------------------------------------- #
@@ -100,7 +97,7 @@ function Makie.plot!(
         # Empty marker means no size
         markersize = isnothing(P[:marker][]) ? nothing :  P[:markersize]
 
-        plot!(
+        series!(
             P, traj, name;
             labels = labels,
             color = colors,
@@ -137,7 +134,7 @@ function Makie.plot!(
         # Empty marker means no size
         markersize = isnothing(P[:marker][]) ? nothing :  P[:markersize]
 
-        plot!(
+        series!(
             P, traj, name;
             labels = labels,
             color = colors,
@@ -179,7 +176,7 @@ function Makie.plot!(
         # Empty marker means no size
         markersize = isnothing(P[:marker][]) ? nothing :  P[:markersize]
 
-        plot!(
+        series!(
             P, traj, input;
             transform = transform,
             labels = labels,
@@ -193,6 +190,9 @@ function Makie.plot!(
     end
     return P
 end
+
+# Allow plot to be called as alias for NamedPlot
+Makie.plottype(::NamedTrajectory, ::Symbol) = NamedPlot
 
 # -------------------------------------------------------------- #
 # Plot trajectories as figure
