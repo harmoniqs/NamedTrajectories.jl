@@ -445,7 +445,11 @@ end
 function update_bound!(traj::NamedTrajectory, name::Symbol, new_bound::BoundType)
     @assert name ∈ keys(traj.components)
     @assert length(new_bound[1]) == length(new_bound[2]) == traj.dims[name]
-    new_bounds = OrderedDict(pairs(traj.bounds))
+    if isempty(traj.bounds)
+        new_bounds = OrderedDict{Symbol, BoundType}()
+    else
+        new_bounds = OrderedDict(pairs(traj.bounds))
+    end
     new_bounds[name] = new_bound
     new_bounds = NamedTuple(new_bounds)
     traj.bounds = new_bounds
