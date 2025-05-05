@@ -226,6 +226,9 @@ function Makie.plot(
     # whether or not to include unique labels for components
     merge_labels::Union{Bool, AbstractVector{Bool}} = false,
 
+    # autolimits will use trajectory data and ignore trajectory bounds
+    use_autolimits::Bool = false,
+
     # ---------------------------------------------------------------------------
     # transformation keyword arguments
     # ---------------------------------------------------------------------------
@@ -282,6 +285,17 @@ function Makie.plot(
     # Default components
     # ------------------
     for (i, name) in enumerate(names)
+
+        # Use bounds to set axis limits
+        if !use_autolimits && name in keys(traj.bounds)
+            ymin = minimum(traj.bounds[name][1])
+            ymax = maximum(traj.bounds[name][2])
+            ybounds = isfinite(ymin) && isfinite(ymax) ? (ymin, ymax) : nothing
+            limits = (nothing, ybounds)
+        else
+            limits = (nothing, nothing)
+        end
+
         ax = Axis(
             fig[i, 1],
             title = i == 1 ? "Named Trajectory" : "",
@@ -291,6 +305,7 @@ function Makie.plot(
             xtickalign=1,
             xlabel = i == length(names) ? "time" : "",
             xlabelsize = xlabelsize,
+            limits = limits
         )
         merge = merge_labels[i]
         namedplot!(ax, traj, name, merge=merge; kwargs...)
