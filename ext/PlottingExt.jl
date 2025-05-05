@@ -10,6 +10,8 @@ using Makie
 
 using TestItems
 
+const AbstractTransform = Union{<:Function, AbstractVector{<:Function}}
+
 # -------------------------------------------------------------- #
 # Plot trajectories with PointBased conversion
 # -------------------------------------------------------------- #
@@ -33,7 +35,7 @@ function Makie.convert_arguments(
     P::Type{<:Series}, 
     traj::NamedTrajectory,
     name::Symbol;
-    transform::Union{Nothing, Function, AbstractVector{<:Function}}=nothing
+    transform::Union{Nothing, AbstractTransform}=nothing
 )
     if !isnothing(transform)
         transform_data = try
@@ -76,48 +78,9 @@ end
 # Add the ability to recall plot labels for a legend (extract series subplots)
 Makie.get_plots(P::NamedPlot) = Makie.get_plots(P.plots[1])
 
-# Plot existing component (LaTeX label from name)
-function Makie.plot!(
-    P::NamedPlot{<:Tuple{<:NamedTrajectory, Symbol}};
-    kwargs...
-)
-    lift(P[:traj], P[:input_name]) do traj, name
-
-        label = L"%$name"
-
-        if P[:merge][]
-            labels = fill(label, length(traj.components[name]))
-        else
-            labels = [convert(typeof(label), "$(label) $(i)") for i in eachindex(traj.components[name])]
-        end
-
-        # Resample a minimum of 2 colors
-        colors =  Makie.resample_cmap(P[:color][], max(2, length(labels)))
-
-        # Empty marker means no size
-        markersize = isnothing(P[:marker][]) ? nothing :  P[:markersize]
-
-        series!(
-            P, traj, name;
-            labels = labels,
-            color = colors,
-            linestyle = P[:linestyle],
-            linewidth = P[:linewidth],
-            marker = P[:marker],
-            markersize = markersize,
-        )
-        
-    end
-    return P
-end
-
 # Plot existing component
 function Makie.plot!(
-    P::NamedPlot{<:Tuple{
-        <:NamedTrajectory, 
-        Symbol,
-        <:AbstractString
-    }};
+    P::NamedPlot{<:Tuple{<:NamedTrajectory, Symbol, <:AbstractString}};
     kwargs...
 )
     lift(P[:traj], P[:input_name], P[:output_name]) do traj, name, label
@@ -142,27 +105,28 @@ function Makie.plot!(
             linewidth = P[:linewidth],
             marker = P[:marker],
             markersize = markersize,
+            kwargs...
         )
         
     end
     return P
 end
 
+# Plot existing component (LaTeX label from name)
+function Makie.plot!(
+    P::NamedPlot{<:Tuple{<:NamedTrajectory, Symbol}};
+    kwargs...
+)
+    plot!(P, P[:traj], P[:input_name], L"%$(P[:input_name][])"; kwargs...)
+    return P
+end
+
 # Plot transformed component
 function Makie.plot!(
-    P::NamedPlot{<:Tuple{
-        <:NamedTrajectory, 
-        Symbol, 
-        <:AbstractString, 
-        <:Union{<:Function, AbstractVector{<:Function}}
-    }};
+    P::NamedPlot{<:Tuple{<:NamedTrajectory, Symbol, <:AbstractString, <:AbstractTransform}};
     kwargs...
 )
     lift(P[:traj], P[:input_name], P[:output_name], P[:transform]) do traj, input, output, transform
-
-        if isempty(output)
-            output = L"T(%$input)"
-        end
 
         if P[:merge][]
             labels = fill(output, length(traj.components[input]))
@@ -185,14 +149,28 @@ function Makie.plot!(
             linewidth = P[:linewidth],
             marker = P[:marker],
             markersize = markersize,
+            kwargs...
         )
         
     end
     return P
 end
 
+# Plot transformed component (output label from name)
+function Makie.plot!(
+    P::NamedPlot{<:Tuple{<:NamedTrajectory, Symbol, <:AbstractTransform}};
+    kwargs...
+)   
+    # transform is arg 3
+    plot!(P, P[:traj], P[:input_name], L"T(%$(P[:input_name][]))", P[3]; kwargs...)
+    return P
+end
+
 # Allow plot to be called as alias for NamedPlot
 Makie.plottype(::NamedTrajectory, ::Symbol) = NamedPlot
+Makie.plottype(::NamedTrajectory, ::Symbol, ::AbstractString) = NamedPlot
+Makie.plottype(::NamedTrajectory, ::Symbol, ::AbstractTransform) = NamedPlot
+Makie.plottype(::NamedTrajectory, ::Symbol, ::AbstractString, ::AbstractTransform) = NamedPlot
 
 # -------------------------------------------------------------- #
 # Plot trajectories as figure
@@ -372,7 +350,7 @@ end
 @testitem "check default plot is series" begin
     using CairoMakie
     f, ax, plt = plot(rand(NamedTrajectory, 10, state_dim=3), :x)
-    @test plt isa Series
+    @assert plt isa Plot
 end
 
 @testitem "convert_arguments plot with legend and transform" begin
@@ -385,7 +363,7 @@ end
     ax = Axis(f[2, 1])
     labels = ["T(x) $i" for i in 1:size(traj.x, 1)]
     p = plot!(
-        ax, traj, :x, transform=x -> x .^ 2, 
+        ax, traj, :x, x -> x .^ 2, 
         labels=labels, color=:seaborn_colorblind, marker=:circle,
     )
     Legend(f[2,2], ax)
@@ -413,7 +391,8 @@ end
     @test p.attributes.merge[] == false
 
     # Test labels (set on the Series plot) (LaTeX string defaults)
-    @test p.plots[1].attributes.labels[] == [L"$x$ %$i" for i in 1:size(traj.x, 1)]
+    labels = p.plots[1].plots[1].attributes.labels[]
+    @test labels == [L"$x$ %$i" for i in 1:size(traj.x, 1)]
 
     @test f isa Figure
 end
@@ -435,12 +414,15 @@ end
 
 @testitem "transform with vector of functions" begin
     using CairoMakie
-    f, ax, plt = plot(
-        rand(NamedTrajectory, 10), :x, transform=[x -> [t - 1] for t in 1:10]
-    )
+    f, ax, plt = plot(rand(NamedTrajectory, 10), :x, [x -> [t - 1] for t in 1:10])
+
     # check internals 
     expected = [Point(Float64(t), Float64(t)) for t in 0:9]
-    @test plt.converted[1][][1] ≈ expected
+
+    # extract data: NamedPlot -> Series -> Points
+    points = to_value.(plt.plots[1].plots[1].converted)[1][1]
+
+    @test points ≈ expected
     @test f isa Figure
 end
 
@@ -452,7 +434,8 @@ end
     ax = Axis(f[1,1])
     p = namedplot!(ax, traj, :x)
     Legend(f[1,2], ax)
-    @test length(p.plots[1].attributes.labels[]) == 100
+    # extract data: NamedPlot -> Series
+    @test length(p.plots[1].plots[1].attributes.labels[]) == 100
     @test f isa Figure
 end
 
