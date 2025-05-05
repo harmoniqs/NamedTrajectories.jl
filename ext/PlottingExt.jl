@@ -84,7 +84,6 @@ function Makie.plot!(
     kwargs...
 )
     lift(P[:traj], P[:input_name], P[:output_name]) do traj, name, label
-
         if P[:merge][]
             labels = fill(label, length(traj.components[name]))
         else
@@ -117,7 +116,9 @@ function Makie.plot!(
     P::NamedPlot{<:Tuple{<:NamedTrajectory, Symbol}};
     kwargs...
 )
-    plot!(P, P[:traj], P[:input_name], L"%$(P[:input_name][])"; kwargs...)
+    # Manually extract and forward attributes
+    attrs = Dict(k => to_value(v) for (k, v) in P.attributes)
+    plot!(P, P[:traj], P[:input_name], L"%$(P[:input_name][])"; merge(attrs, kwargs)...)
     return P
 end
 
@@ -161,8 +162,10 @@ function Makie.plot!(
     P::NamedPlot{<:Tuple{<:NamedTrajectory, Symbol, <:AbstractTransform}};
     kwargs...
 )   
+    # Manually extract and forward attributes
+    attrs = Dict(k => to_value(v) for (k, v) in P.attributes)
     # transform is arg 3
-    plot!(P, P[:traj], P[:input_name], L"T(%$(P[:input_name][]))", P[3]; kwargs...)
+    plot!(P, P[:traj], P[:input_name], L"T(%$(P[:input_name][]))", P[3]; merge(attrs, kwargs)...)
     return P
 end
 
@@ -211,8 +214,8 @@ function Makie.plot(
     # transformation keyword arguments
     # ---------------------------------------------------------------------------
 
-    # transformations
-    transformations::AbstractVector{<:Pair{Symbol, <:Union{<:Function, <:AbstractVector{<:Function}}}} = Pair{Symbol, Function}[],
+    # transformations, e.g. [(:x => x -> [x[1]; x[2]]), ...]
+    transformations::AbstractVector{<:Pair{Symbol, <:AbstractTransform}} = Pair{Symbol, Function}[],
 
     # labels for transformed components
     transformation_labels::AbstractVector{<:AbstractString} = fill("", length(transformations)),
@@ -286,7 +289,7 @@ function Makie.plot(
             limits = limits
         )
         merge = merge_labels[i]
-        namedplot!(ax, traj, name, merge=merge; kwargs...)
+        namedplot!(ax, traj, name; merge=merge, kwargs...)
         Legend(fig[i, 2], ax, merge=merge)
     end
 
@@ -316,7 +319,11 @@ function Makie.plot(
         
         output = transformation_labels[i]
         merge = merge_transformation_labels[i]
-        namedplot!(ax, traj, input, output, transform, merge=merge; kwargs...)
+        if !isempty(output)
+            namedplot!(ax, traj, input, output, transform; merge=merge, kwargs...)
+        else
+            namedplot!(ax, traj, input, transform; merge=merge, kwargs...)
+        end
         Legend(fig[offset + i, 2], ax, merge=merge)
     end
 
@@ -453,6 +460,32 @@ end
     p = namedplot!(ax, traj, :x, "y", x -> x .^ 2, linewidth=3, marker=:circle)
     Legend(f[2,2], ax)
     @test p.plots[1].attributes.labels[] == ["y $i" for i in 1:size(traj.x, 1)]
+end
+
+@testitem "traj plot merge" begin
+    using CairoMakie
+    state_dim = 3
+    control_dim = 2
+    traj = rand(NamedTrajectory, 10, state_dim=state_dim, control_dim=control_dim)
+
+    # false, false
+    f = plot(traj)
+    legs = [c for c in f.content if c isa Legend] 
+    # x (count all entries -- likely only one entrygroup)
+    @assert sum(length(entries) for (_, entries) in legs[1].entrygroups[]) == state_dim
+    @assert sum(length(entries) for (_, entries) in legs[2].entrygroups[]) == control_dim
+
+    # true, false
+    f = plot(traj, merge_labels=[true, false])
+    legs = [c for c in f.content if c isa Legend] 
+    @assert sum(length(entries) for (_, entries) in legs[1].entrygroups[]) == 1
+    @assert sum(length(entries) for (_, entries) in legs[2].entrygroups[]) == control_dim
+
+    # true, true
+    f = plot(traj, merge_labels=true)
+    legs = [c for c in f.content if c isa Legend] 
+    @assert sum(length(entries) for (_, entries) in legs[1].entrygroups[]) == 1
+    @assert sum(length(entries) for (_, entries) in legs[2].entrygroups[]) == 1
 end
 
 @testitem "traj plot with transformations" begin
