@@ -395,6 +395,7 @@ end
 
 Update the trajectory with a new datavec.
 """
+# TODO: this doesn't account for global data
 function update!(traj::NamedTrajectory, datavec::AbstractVector{Float64})
     @assert length(datavec) == traj.dim * traj.T + traj.global_dim
     traj.datavec = datavec
