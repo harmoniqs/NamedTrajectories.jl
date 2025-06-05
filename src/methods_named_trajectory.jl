@@ -396,9 +396,21 @@ end
 Update the trajectory with a new datavec.
 """
 function update!(traj::NamedTrajectory, datavec::AbstractVector{Float64})
-    @assert length(datavec) == traj.dim * traj.T + traj.global_dim
+    @assert length(datavec) == traj.dim * traj.T
     traj.datavec = datavec
     traj.data = reshape(view(datavec, :), traj.dim, traj.T)
+    return nothing
+end
+
+"""
+    update!(traj::NamedTrajectory, data::NamedTuple)
+
+Update the global data of the trajectory with a NamedTuple.
+"""
+function update!(traj::NamedTrajectory, data::NamedTuple)
+    @assert all([k ∈ keys(traj.global_data) for k in keys(data)])
+    @assert all([length(v) == traj.global_dims[k] for (k, v) in pairs(data)])
+    traj.global_data = merge(traj.global_data, data)
     return nothing
 end
 
