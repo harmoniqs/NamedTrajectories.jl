@@ -28,124 +28,6 @@ using TestItems
 using ..StructNamedTrajectory
 using ..StructKnotPoint
 
-# -------------------------------------------------------------- #
-# Base show
-# -------------------------------------------------------------- #
-
-Base.show(io::IO, traj::NamedTrajectory) = print(io, traj.components, ", T = ", traj.T)
-
-# -------------------------------------------------------------- #
-# Base indexing
-# -------------------------------------------------------------- #
-
-"""
-    KnotPoint(Z::NamedTrajectory, t::Int)
-
-    # Arguments
-    - `Z::NamedTrajectory`: The trajectory from which the KnotPoint is taken.
-    - `t::Int`: The timestep of the KnotPoint.
-"""
-function StructKnotPoint.KnotPoint(
-    Z::NamedTrajectory,
-    t::Int
-)
-    @assert 1 ≤ t ≤ Z.T
-    timestep = get_timesteps(Z)[t]
-    return KnotPoint(t, view(Z.data, :, t), timestep, Z.components, Z.names, Z.control_names)
-end
-
-"""
-    getindex(traj, t::Int)::KnotPoint
-
-Returns the knot point at time `t`.
-"""
-Base.getindex(traj::NamedTrajectory, t::Int) = KnotPoint(traj, t)
-
-"""
-    getindex(traj, ts::AbstractVector{Int})::Vector{KnotPoint}
-
-Returns the knot points at times `ts`.
-"""
-function Base.getindex(traj::NamedTrajectory, ts::AbstractVector{Int})::Vector{KnotPoint}
-    return [traj[t] for t ∈ ts]
-end
-
-"""
-    lastindex(traj::NamedTrajectory)
-
-Returns the final time index of the trajectory.
-"""
-Base.lastindex(traj::NamedTrajectory) = traj.T
-
-"""
-    getindex(traj, symb::Symbol)
-
-Dispatches indexing of trajectories as either accessing a component or a property via `getproperty`.
-"""
-Base.getindex(traj::NamedTrajectory, symb::Symbol) = getproperty(traj, symb)
-
-"""
-    getproperty(traj, symb::Symbol)
-
-Returns the component of the trajectory with name `symb` (as a view) or the property of the trajectory with name `symb`.
-"""
-function Base.getproperty(traj::NamedTrajectory, symb::Symbol)
-    if symb == :data
-        return reshape(view(traj.datavec, :), :, traj.T)
-    elseif symb ∈ fieldnames(NamedTrajectory)
-        return getfield(traj, symb)
-    else
-        indices = traj.components[symb]
-        return view(traj.data, indices, :)
-    end
-end
-
-"""
-    setproperty!(traj, name::Symbol, val::Any)
-
-Dispatches setting properties of trajectories as either setting a component or a property via `update!` or `setfield!`, respectively.
-"""
-function Base.setproperty!(traj::NamedTrajectory, symb::Symbol, val::Any)
-    if symb ∈ fieldnames(NamedTrajectory)
-        setfield!(traj, symb, val)
-    else
-        update!(traj, symb, val)
-    end
-end
-
-# -------------------------------------------------------------- #
-# Base operations
-# -------------------------------------------------------------- #
-
-"""
-    vec(::NamedTrajectory)
-
-Returns all variables of the trajectory as a vector, Z⃗.
-"""
-function Base.vec(Z::NamedTrajectory)
-    return vcat(Z.datavec, values(Z.global_data)...)
-end
-
-"""
-    length(::NamedTrajectory)
-
-Returns the length of all variables of the trajectory, including global data.
-
-TODO: Should global data be in length?
-"""
-function Base.length(Z::NamedTrajectory)
-    return Z.dim * Z.T + Z.global_dim
-end
-
-"""
-    size(traj::NamedTrajectory) = (dim = traj.dim, T = traj.T)
-
-Returns the size of the trajectory (dim, T), excluding global data.
-
-TODO: Should global data be in size?
-"""
-Base.size(traj::NamedTrajectory) = (dim = traj.dim, T = traj.T)
-
 """
     copy(::NamedTrajectory)
 
@@ -247,7 +129,7 @@ function get_component_names(traj::NamedTrajectory, comps::AbstractVector{<:Int}
 end
 
 """
-    add_component!(traj, name::Symbol, data::AbstractVecOrMat; type={:state, :control, :slack})
+    add_component(traj, name::Symbol, data::AbstractVecOrMat; type={:state, :control, :slack})
 
 Add a component to the trajectory.
 

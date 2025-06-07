@@ -6,12 +6,14 @@ export BoundType
 using OrderedCollections
 using TestItems
 
+const DimType = Tuple{Vararg{Int}}
 const BoundType = Tuple{AbstractVector{<:Real}, AbstractVector{<:Real}}
 
 # UnitRange{Int} enforces nonallocating @views with indexing
 const ComponentType = Tuple{Vararg{UnitRange{Int}}}
 
-# TODO: Can we fix these NamedTuple types at a higher level?
+# TODO: Types and check on R <: Real for initial, final, goal
+
 
 # ---------------------------------------------------------------------------- #
 # Named Trajectory
@@ -30,18 +32,18 @@ NamedTrajectory is designed to make allocation-free access easy to write.
 """
 mutable struct NamedTrajectory{
     R <: Real,
-    DNames, DTypes <: Tuple,
-    BNames, BTypes <: Tuple,
+    DNames, DTypes <: DimType,
+    BNames, BTypes <: Tuple{Vararg{BoundType}},
     INames, ITypes <: Tuple,
     FNames, FTypes <: Tuple,
     GNames, GTypes <: Tuple,
     CNames, CTypes <: ComponentType,
-    N <: Tuple,
-    SN <: Tuple,
-    CN <: Tuple,
-    GDNames, GDTypes <: Tuple,
+    N <: Tuple{Vararg{Symbol}},
+    SN <: Tuple{Vararg{Symbol}},
+    CN <: Tuple{Vararg{Symbol}},
+    GDNames, GDTypes <: DimType,
     GCNames, GCTypes <: ComponentType,
-    GN <: Tuple,
+    GN <: Tuple{Vararg{Symbol}},
 }
     datavec::Vector{R}
     T::Int
@@ -82,6 +84,7 @@ function NamedTrajectory(
     gcomps::NamedTuple{GN, <:ComponentType} where GN=NamedTuple(),
 ) where R <: Real
     @assert :data ∉ keys(comps) "data is a reserved name"
+    @assert isdisjoint(keys(comps), keys(gcomps)) "components and global components should use unique names"
 
     @assert timestep isa Symbol && timestep ∈ keys(comps)
 
@@ -270,26 +273,24 @@ end
 function get_bounds_from_dims(
     bounds::NamedTuple,
     dims::NamedTuple{N, <:Tuple{Vararg{Int}}} where N,
-)
-    @assert all([
-        bound isa Real ||
-        bound isa AbstractVector{<:Real} ||
-        bound isa Tuple{<:Real, <:Real} ||
-        bound isa BoundType
-            for bound ∈ bounds
-    ])
-
+)   
     bounds_dict = OrderedDict{Symbol,Any}(pairs(bounds))
     for (name, bound) ∈ bounds_dict
+        bdim = dims[name]
         if bound isa Real
-            bounds_dict[name] = (
-                -fill(bound, size(dims[name], 1)),
-                fill(bound, size(dims[name], 1))
-            )
-        elseif bound isa AbstractVector
-            bounds_dict[name] = (-bound, bound)
+            vbound = fill(bound, bdim)
+            bounds_dict[name] = (-vbound, vbound)
         elseif bound isa Tuple{<:Real, <:Real}
-            bounds_dict[name] = ([bound[1]], [bound[2]])
+            bounds_dict[name] = (fill(bound[1], bdim), fill(bound[2], bdim))
+        elseif bound isa AbstractVector
+            if length(bound) != bdim 
+                throw(ArgumentError("Bound $name has wrong length: $(length(bound)) != $bdim"))
+            end
+            bounds_dict[name] = (-bound, bound)
+        elseif bound isa BoundType
+            bounds_dict[name] = bound
+        else
+            throw(ArgumentError("Invalid bound type for $name: $(typeof(bound))"))
         end
     end
     return NamedTuple(bounds_dict)
@@ -352,23 +353,25 @@ function inspect_dims_pairs(
     end
 end
 
-# =========================================================================== #
+# =========================================================================== #"
 
 @testitem "Construct from data matrix and comps" begin
     n = 5
     T = 10
     data = randn(n, T)
-    traj = NamedTrajectory(data, (x = 1:3, y=4:4, z=5:5))
+    traj = NamedTrajectory(data, (x = 1:3, y=4:4, Δt=5:5))
     @test traj.data ≈ data
     @test traj.timestep == :Δt
     @test traj.dim == n
     @test traj.T == T
+    @test traj.names == [:x, :y, :Δt]
 
     traj = NamedTrajectory(data, (x = 1:3, y=4:4, z=5:5), timestep=:z)
     @test traj.data ≈ data
     @test traj.timestep == :z
     @test traj.dim == n
     @test traj.T == T
+    @test traj.names == [:x, :y, :z]
 end
 
 @testitem "Construct from component data" begin
@@ -393,6 +396,8 @@ end
         β = rand(1)
     )
 
+    # test global
+    # ---
     traj = NamedTrajectory(
         comps_data,
         gcomps_data;
@@ -403,6 +408,10 @@ end
     @test traj.T == T
     @test traj.dim == dim
     @test length(traj.gdata) == gdim
+    @test traj.names = [:x, :u, :Δt]
+    @test traj.state_names == (:x,)
+    @test traj.control_names == (:u, :Δt)
+    @test traj.gnames == [:α, :β]
 
     comps_res = NamedTuple([(k => traj.data[v, :]) for (k, v) in pairs(traj.components)]) 
     @test comps_res == comps_data
@@ -411,10 +420,15 @@ end
     @test gres == gcomps_data
 
     # ignore global
+    # ---
     traj = NamedTrajectory(comps_data)
 
     @test traj.T == T
     @test traj.dim == dim
+    @test traj.names = [:x, :u, :Δt]
+    @test traj.state_names == (:x,)
+    @test traj.control_names == (:u, :Δt)
+    @test isempty(traj.gnames)
 
     comps_res = NamedTuple([(k => traj.data[v, :]) for (k, v) in pairs(traj.components)]) 
     @test comps_res == comps_data
@@ -422,5 +436,28 @@ end
     @test isempty(traj.gdata)
 end
 
+@testitem "Test bounds" begin
+    data = randn(10, 10)
+
+    # Test: (real, real), (vec, vec), real, vec
+    xlow = [-1, -2, -3]
+    xupp = [1, 2, 3]
+    xtuple = (xlow, xupp)
+    ylow = 0
+    yup = 1
+    ytuple = (ylow, yup)
+    zval = 1
+    wval = [5, 6]
+    traj = NamedTrajectory(
+        data, 
+        (Δt=1:1, x=2:4, y=5:5, z=6:8, w=9:10),
+        bounds=(x=xtuple, y=ytuple, z=zval, w=wval)
+    )
+    @test traj.bounds.x == xtuple
+    @test traj.bounds.y == ([ylow], [yup])
+    @test traj.bounds.z == (fill(-zval, traj.dims.z), fill(zval, traj.dims.z))
+    @test traj.bounds.w == (-wval, wval)
+    @test :Δt ∉ traj.bounds
+end
 
 end
