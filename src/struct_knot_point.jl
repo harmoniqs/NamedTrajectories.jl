@@ -4,6 +4,8 @@ export KnotPoint
 
 using ..StructNamedTrajectory
 
+# TODO: Concerete type
+
 """
     KnotPoint constructor
 """

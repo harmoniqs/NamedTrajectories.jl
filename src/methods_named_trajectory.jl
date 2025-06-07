@@ -1,5 +1,8 @@
 module MethodsNamedTrajectory
 
+# Does it make sense to have a mutation?
+# - Yes for data, No for shapes.
+
 export vec
 export get_components
 export get_component_names
@@ -24,6 +27,12 @@ using TestItems
 
 using ..StructNamedTrajectory
 using ..StructKnotPoint
+
+# -------------------------------------------------------------- #
+# Base show
+# -------------------------------------------------------------- #
+
+Base.show(io::IO, traj::NamedTrajectory) = print(io, traj.components, ", T = ", traj.T)
 
 # -------------------------------------------------------------- #
 # Base indexing
@@ -81,7 +90,9 @@ Base.getindex(traj::NamedTrajectory, symb::Symbol) = getproperty(traj, symb)
 Returns the component of the trajectory with name `symb` (as a view) or the property of the trajectory with name `symb`.
 """
 function Base.getproperty(traj::NamedTrajectory, symb::Symbol)
-    if symb ∈ fieldnames(NamedTrajectory)
+    if symb == :data
+        return reshape(view(traj.datavec, :), :, traj.T)
+    elseif symb ∈ fieldnames(NamedTrajectory)
         return getfield(traj, symb)
     else
         indices = traj.components[symb]
