@@ -14,7 +14,6 @@ const ComponentType = Tuple{Vararg{UnitRange{Int}}}
 
 # TODO: Types and check on R <: Real for initial, final, goal
 
-
 # ---------------------------------------------------------------------------- #
 # Named Trajectory
 # ---------------------------------------------------------------------------- #
@@ -81,10 +80,10 @@ function NamedTrajectory(
     final=NamedTuple(),
     goal=NamedTuple(),
     gdata::AbstractVector{R}=R[],
-    gcomps::NamedTuple{GN, <:ComponentType} where GN=NamedTuple(),
+    gcomponents::NamedTuple{GN, <:ComponentType} where GN=NamedTuple(),
 ) where R <: Real
     @assert :data ∉ keys(comps) "data is a reserved name"
-    @assert isdisjoint(keys(comps), keys(gcomps)) "components and global components should use unique names"
+    @assert isdisjoint(keys(comps), keys(gcomponents)) "components and global components should use unique names"
 
     @assert timestep isa Symbol && timestep ∈ keys(comps)
 
@@ -115,8 +114,8 @@ function NamedTrajectory(
 
     # global data 
     gdim = length(gdata)
-    gdims = NamedTuple([(k => length(v)) for (k, v) ∈ pairs(gcomps)])
-    gnames = Tuple(keys(gcomps))
+    gdims = NamedTuple([(k => length(v)) for (k, v) ∈ pairs(gcomponents)])
+    gnames = Tuple(keys(gcomponents))
 
     # check global data
     @assert gdim == sum(values(gdims), init=0) "invalid global data dims"
@@ -138,7 +137,7 @@ function NamedTrajectory(
         gdata,
         gdim,
         gdims,
-        gcomps,
+        gcomponents,
         gnames
     )
 end
@@ -244,10 +243,7 @@ function NamedTrajectory(
         final=traj.final,
         goal=traj.goal,
         gdata=gdata,
-        gdim=traj.gdim,
-        gdims=traj.gdims,
         gcomponents=traj.gcomponents,
-        gnames=traj.gnames
     )
 end
 

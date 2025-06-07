@@ -3,18 +3,19 @@ module MethodsNamedTrajectory
 # Does it make sense to have a mutation?
 # - Yes for data, No for shapes.
 
-export vec
-export get_components
-export get_component_names
+# export vec
 export add_component!
 export remove_component
 export remove_components
 export update!
 export update_bound!
-export merge
+export get_components
+export get_component_names
 export get_times
 export get_timesteps
 export get_duration
+export merge
+
 export convert_fixed_time
 export convert_free_time
 
@@ -27,72 +28,15 @@ using TestItems
 
 using ..StructNamedTrajectory
 using ..StructKnotPoint
+using ..BaseNamedTrajectory
 
-"""
-    copy(::NamedTrajectory)
-
-Returns a copy of the trajectory.
-"""
-function Base.copy(traj::NamedTrajectory)
-    return NamedTrajectory(deepcopy(traj.data), traj)
-end
-
-"""
-    isequal(traj1::NamedTrajectory, traj2::NamedTrajectory)
-
-Check if trajectories are equal w.r.t. data using `Base.isequal`
-"""
-function Base.isequal(traj1::NamedTrajectory, traj2::NamedTrajectory)
-    if isequal(traj1.data, traj2.data) &&
-        isequal(traj1.names, traj2.names)
-        return true
-    else
-        return false
-    end
-end
-
-"""
-    :(==)(traj1::NamedTrajectory, traj2::NamedTrajectory)
-
-Check if trajectories are equal w.r.t. using `Base.:(==)`
-"""
-function Base.:(==)(traj1::NamedTrajectory, traj2::NamedTrajectory)
-    if traj1.data == traj2.data &&
-        traj1.names == traj2.names
-        return true
-    else
-        return false
-    end
-end
-
-function Base.:*(α::Float64, traj::NamedTrajectory)
-    return NamedTrajectory(α * traj.datavec, traj)
-end
-
-function Base.:*(traj::NamedTrajectory, α::Float64)
-    return NamedTrajectory(α * traj.datavec, traj)
-end
-
-function Base.:+(traj1::NamedTrajectory, traj2::NamedTrajectory)
-    @assert traj1.names == traj2.names
-    @assert traj1.dim == traj2.dim
-    @assert traj1.T == traj2.T
-    return NamedTrajectory(traj1.datavec + traj2.datavec, traj1)
-end
-
-function Base.:-(traj1::NamedTrajectory, traj2::NamedTrajectory)
-    @assert traj1.names == traj2.names
-    @assert traj1.dim == traj2.dim
-    @assert traj1.T == traj2.T
-    return NamedTrajectory(traj1.datavec - traj2.datavec, traj1)
-end
 
 # -------------------------------------------------------------- #
 # Set/get methods
 # -------------------------------------------------------------- #
 
 """
-    get_components(::NamedTrajectory)
+    get_components(names, ::NamedTrajectory)
 
 Returns a NamedTuple containing the names and corresponding data matrices of the trajectory.
 """
@@ -764,57 +708,6 @@ end
 
 
 # =========================================================================== #
-
-@testitem "knot point methods" begin
-    include("../test/test_utils.jl")
-    fixed_time_traj = get_fixed_time_traj()
-    free_time_traj = get_free_time_traj()
-
-    # freetime
-    @test free_time_traj[1] isa KnotPoint
-    @test free_time_traj[1].x == free_time_traj.x[:, 1]
-    @test free_time_traj[end] isa KnotPoint
-    @test free_time_traj[end].x == free_time_traj.x[:, end]
-    @test free_time_traj[:x] == free_time_traj.x
-    @test free_time_traj.timestep isa Symbol
-
-    # fixed time
-    @test fixed_time_traj[1] isa KnotPoint
-    @test fixed_time_traj[1].x == fixed_time_traj.x[:, 1]
-    @test fixed_time_traj[end] isa KnotPoint
-    @test fixed_time_traj[end].x == fixed_time_traj.x[:, end]
-    @test fixed_time_traj[:x] == fixed_time_traj.x
-    @test fixed_time_traj.timestep isa Float64
-end
-
-@testitem "algebraic methods" begin
-    include("../test/test_utils.jl")
-    fixed_time_traj = get_fixed_time_traj()
-    free_time_traj = get_free_time_traj()
-    free_time_traj2 = copy(free_time_traj)
-    fixed_time_traj2 = copy(fixed_time_traj)
-
-    @test (free_time_traj + free_time_traj2).x == free_time_traj.x + free_time_traj2.x
-    @test (fixed_time_traj + fixed_time_traj2).x == fixed_time_traj.x + fixed_time_traj2.x
-
-    @test (free_time_traj - free_time_traj2).x == free_time_traj.x - free_time_traj2.x
-    @test (fixed_time_traj - fixed_time_traj2).x == fixed_time_traj.x - fixed_time_traj2.x
-
-    @test (2.0 * free_time_traj).x == (free_time_traj * 2.0).x == free_time_traj.x * 2.0
-    @test (2.0 * fixed_time_traj).x == (fixed_time_traj * 2.0).x == fixed_time_traj.x * 2.0
-end
-
-@testitem "copying and equality checks" begin
-    include("../test/test_utils.jl")
-    fixed_time_traj = get_fixed_time_traj()
-    free_time_traj = get_free_time_traj()
-
-    fixed_time_traj_copy = copy(fixed_time_traj)
-    free_time_traj_copy = copy(free_time_traj)
-
-    @test isequal(fixed_time_traj, fixed_time_traj_copy)
-    @test fixed_time_traj == fixed_time_traj_copy
-end
 
 @testitem "adding and removing state matrix and vector component" begin
     include("../test/test_utils.jl")
