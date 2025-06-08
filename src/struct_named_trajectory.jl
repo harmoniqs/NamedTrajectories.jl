@@ -226,24 +226,33 @@ Construct a `NamedTrajectory` from a datavec and an existing `NamedTrajectory`.
 """
 function NamedTrajectory(
     datavec::AbstractVector{R},
-    traj::NamedTrajectory;    
+    traj::NamedTrajectory;
+    components::NamedTuple{N, <:ComponentType} where N=traj.components,
+    T::Int=traj.T,
+    timestep::Symbol=traj.timestep,
+    controls::Union{Symbol, Tuple{Vararg{Symbol}}}=traj.control_names,
+    bounds=traj.bounds,
+    initial=traj.initial,
+    final=traj.final,
+    goal=traj.goal,
     gdata::AbstractVector{R}=traj.gdata,
+    gcomponents::NamedTuple{GN, <:ComponentType} where GN=traj.gcomponents,
 ) where R <: Real
-    @assert length(datavec) == length(traj.datavec)
-    @assert length(gdata) == length(traj.gdata)
+    @assert length(datavec) == sum(length.(values(components)), init=0) * T "Data vector length does not match components * T"
+    @assert length(gdata) == sum(length.(values(gcomponents)), init=0) "Global data length does not match global components"
 
     return NamedTrajectory(
         datavec,
-        traj.components,
-        traj.T;
-        timestep=traj.timestep,
-        controls=traj.control_names,
-        bounds=traj.bounds,
-        initial=traj.initial,
-        final=traj.final,
-        goal=traj.goal,
+        components,
+        T;
+        timestep=timestep,
+        controls=controls,
+        bounds=bounds,
+        initial=initial,
+        final=final,
+        goal=goal,
         gdata=gdata,
-        gcomponents=traj.gcomponents,
+        gcomponents=gcomponents,
     )
 end
 

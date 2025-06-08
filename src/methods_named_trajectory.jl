@@ -1,19 +1,28 @@
 module MethodsNamedTrajectory
 
-# Does it make sense to have a mutation?
-# - Yes for data, No for shapes.
+export get_components
+export get_component_name
+export get_component_names
 
-# export vec
-export add_component!
+export get_times
+export get_timesteps
+export get_duration
+
+export add_component
+export add_components
+
+# ---
+# TODO: Refactor 
+
+# None of these really work anymore...
+
 export remove_component
 export remove_components
 export update!
 export update_bound!
-export get_components
-export get_component_names
-export get_times
-export get_timesteps
-export get_duration
+
+# ---
+
 export merge
 
 export convert_fixed_time
@@ -22,6 +31,8 @@ export convert_free_time
 export add_suffix
 export remove_suffix
 export get_suffix
+
+# ---
 
 using OrderedCollections
 using TestItems
@@ -32,7 +43,7 @@ using ..BaseNamedTrajectory
 
 
 # -------------------------------------------------------------- #
-# Set/get methods
+# Get comps
 # -------------------------------------------------------------- #
 
 """
@@ -61,118 +72,184 @@ the name is returned as a single symbol. Else, the names are returned as a vecto
 The filter requires that the components are a complete subset of the given indices, so that
 a partial match is excluded from the returned names.
 """
-function get_component_names(traj::NamedTrajectory, comps::AbstractVector{<:Int})
-    name = [n for n ∈ keys(filter_by_value(x -> issubset(x, comps), traj.components)) if n ∈ traj.names]
-    if isempty(name)
+function get_component_names(traj::NamedTrajectory, comps::AbstractVector{Int})
+    names = [n for n ∈ keys(filter_by_value(x -> issubset(x, comps), traj.components)) if n ∈ traj.names]
+    if isempty(names)
         error("Component names not found in traj")
-    elseif length(name) == 1
-        return name[1]
     else
-        return name
+        return names
+    end
+end
+
+function get_component_name(traj::NamedTrajectory, comps::AbstractVector{Int})
+    names = get_component_names(traj, comps)
+    if length(names) == 1
+        return names[1]
+    else
+        error("Multiple component names $(names) found.")
+    end
+end
+
+
+# -------------------------------------------------------------- #
+# Time operations
+# -------------------------------------------------------------- #
+
+"""
+    get_times(traj)::Vector{Float64}
+
+Returns the times of a trajectory as a vector.
+"""
+function get_times(traj::NamedTrajectory)
+    if traj.timestep isa Symbol
+        return cumsum([0.0, vec(traj[traj.timestep])[1:end-1]...])
+    else
+        return [0:traj.T-1...] * traj.timestep
     end
 end
 
 """
-    add_component(traj, name::Symbol, data::AbstractVecOrMat; type={:state, :control, :slack})
+    get_timesteps(::NamedTrajectory)
+
+Returns the timesteps of a trajectory as a vector.
+"""
+function get_timesteps(traj::NamedTrajectory)
+    if traj.timestep isa Symbol
+        return vec(traj[traj.timestep])
+    else
+        return fill(traj.timestep, traj.T)
+    end
+end
+
+"""
+    get_duration(::NamedTrajectory)
+
+Returns the duration of a trajectory.
+"""
+function get_duration(traj::NamedTrajectory)
+    return get_times(traj)[end]
+end
+
+# -------------------------------------------------------------- #
+# Add/remove operations
+# -------------------------------------------------------------- #
+
+function extend_datavec(
+    data::AbstractMatrix{R}, 
+    ext_data::AbstractMatrix{R}
+) where R <: Real
+    @assert size(data, 2) == size(ext_data, 2)
+    T = size(data, 2)
+    dim = size(data, 1)
+    ext_dim = size(ext_data, 1)
+    new_datavec = zeros((dim + ext_dim) * T)
+    for t in 1:T
+        # fill original data
+        copyto!(new_datavec, (t - 1) * (dim + ext_dim) + 1, data[:, t], 1, dim)
+        # fill new data
+        copyto!(new_datavec, (t - 1) * (dim + ext_dim) + dim + 1, ext_data[:, t], 1, ext_dim)
+    end
+    return new_datavec
+end
+
+"""
+    add_components(traj, comps)
+
+Add components to the trajectory.
+
+Keyword arguments:
+    - `type::Symbol`: The type of the component, can be `:state`, `:control`, `:slack`, or `:global`. Default is `:state`.
+"""
+function add_components(
+    traj::NamedTrajectory,
+    comps_data::NamedTuple{<:Any, <:Tuple};
+    type::Symbol=:state,
+    kwargs...
+)
+    if type == :global
+        @assert all([c isa AbstractVector for c in values(comps_data)])
+        @assert all([k ∉ keys(traj.gcomponents) for k in keys(comps_data)])
+
+        gdata = vcat(traj.gdata, vcat(values(comps_data)...))
+
+        # update global components
+        start_idx = traj.gdim + 1
+        gcomps_pairs = []
+        for (k, v) in pairs(comps_data)
+            stop_idx = start_idx + length(v) - 1
+            push!(gcomps_pairs, k => (start_idx:stop_idx))
+            start_idx = stop_idx + 1
+        end
+        gcomps = merge(traj.gcomponents, gcomps_pairs)
+
+        println(typeof(gdata))
+
+        return NamedTrajectory(
+            traj.datavec,
+            traj; 
+            gdata=gdata, 
+            gcomponents=gcomps,
+            kwargs...
+        )
+    elseif type ∈ [:state, :control, :slack]
+        @assert all([data isa AbstractMatrix for data in values(comps_data)])
+        @assert all([size(data, 2) == traj.T for (name, data) in pairs(comps_data)])
+        @assert all([name ∉ keys(traj.components) for (name, data) in pairs(comps_data)])
+
+        # update components
+        start_idx = traj.dim + 1
+        comps_pairs = []
+        for (k, v) in pairs(comps_data)
+            stop_idx = start_idx + size(v, 1) - 1
+            push!(comps_pairs, k => (start_idx:stop_idx))
+            start_idx = stop_idx + 1
+        end
+        comps = merge(traj.components, comps_pairs)
+
+        # update control names TODO: slack names are states?
+        if type == :control
+            controls = (traj.control_names..., keys(comps_data)...)
+        else
+            controls = traj.control_names
+        end
+
+        # update data
+        datavec = extend_datavec(traj.data, vcat(values(comps_data)...))
+
+        return NamedTrajectory(
+            datavec,
+            traj;
+            components=comps,
+            controls=controls,
+            kwargs...
+        )
+    else
+        throw(ArgumentError("Invalid type: $type. Must be one of :state, :control, :slack, or :global."))
+    end
+end
+
+"""
+    add_component(traj, name::Symbol, data::AbstractVecOrMat)
 
 Add a component to the trajectory.
 
-This function resizes the trajectory, so global components and components must be adjusted.
+Keyword arguments:
+    - `type::Symbol`: The type of the component, can be `:state`, `:control`, `:slack`, or `:global`. Default is `:state`.
 """
-function add_component!(
+function add_component(
     traj::NamedTrajectory,
     name::Symbol,
     data::AbstractVecOrMat{Float64};
-    type=:state
+    type::Symbol=:state,
+    kwargs...
 )
-
-    # check if data is a vector and convert to matrix if so
-    if data isa AbstractVector
-        data = reshape(data, 1, traj.T)
+    if type != :global && data isa AbstractVector
+        @assert length(data) == traj.T "Data length must match trajectory T"
+        comp_data = (; name => reshape(data, 1, traj.T),) 
+    else
+        comp_data = (; name => data,)
     end
-
-    # get the dimension of the new component
-    dim = size(data, 1)
-
-    # check data against existing data
-    @assert size(data, 2) == traj.T
-    @assert name ∉ keys(traj.components)
-    @assert type ∈ (:state, :control, :slack)
-
-
-    # update components
-
-    comp_dict = OrderedDict(pairs(traj.components))
-
-    comp_dict[name] = (traj.dim + 1):(traj.dim + dim)
-
-    if type == :state
-        comp_dict[:states] = vcat(comp_dict[:states], comp_dict[name])
-    elseif type == :control
-        comp_dict[:controls] = vcat(comp_dict[:controls], comp_dict[name])
-    elseif type == :slack
-        if :slacks ∉ keys(comp_dict)
-            comp_dict[:slacks] = comp_dict[name]
-        else
-            comp_dict[:slacks] = vcat(comp_dict[:slacks], comp_dict[name])
-        end
-    end
-
-    traj.components = NamedTuple(comp_dict)
-
-
-    # update dims
-
-    traj.dim += dim
-
-    dim_dict = OrderedDict(pairs(traj.dims))
-
-    dim_dict[name] = dim
-
-    if type == :state
-        dim_dict[:states] += dim
-    elseif type == :control
-        dim_dict[:controls] += dim
-    elseif type == :slack
-        if :slacks ∉ keys(dim_dict)
-            dim_dict[:slacks] = dim
-        else
-            dim_dict[:slacks] += dim
-        end
-    end
-
-    traj.dims = NamedTuple(dim_dict)
-
-
-    # update names
-
-    traj.names = (traj.names..., name)
-    
-    if type == :state
-        traj.state_names = (traj.state_names..., name)
-    elseif type == :control
-        traj.control_names = (traj.control_names..., name)
-    elseif type == :slack
-        # slack names are states
-        traj.state_names = (traj.state_names..., name)
-    end
-
-    # update data
-
-    traj.data = vcat(traj.data, data)
-
-    traj.datavec = vec(view(traj.data, :, :))
-
-    # update global data
-
-    global_comps_pairs::Vector{Pair{Symbol, AbstractVector{Int}}} = []
-    for (k, v) ∈ pairs(traj.global_components)
-        # increase offset for new components
-        push!(global_comps_pairs, k => v .+ dim * traj.T)
-    end
-    traj.global_components = NamedTuple(global_comps_pairs)
-
-    return nothing
+    return add_components(traj, comp_data; type=type, kwargs...)
 end
 
 """
@@ -213,6 +290,10 @@ function remove_components(
         new_control_names=new_control_names, new_timestep=new_timestep
     )
 end
+
+# -------------------------------------------------------------- #
+# Update operations
+# -------------------------------------------------------------- #
 
 """
     update!(traj, name::Symbol, data::AbstractMatrix{Float64})
@@ -359,7 +440,7 @@ function add_suffix(traj::NamedTrajectory, suffix::String)
     return NamedTrajectory(
         components;
         controls=controls,
-        timestep=traj.timestep isa Symbol ? add_suffix(traj.timestep, suffix) : traj.timestep,
+        timestep=add_suffix(traj.timestep, suffix),
         bounds=add_suffix(traj.bounds, suffix),
         initial=add_suffix(traj.initial, suffix),
         final=add_suffix(traj.final, suffix),
@@ -667,47 +748,36 @@ function merge_outer(nt1::NamedTuple, nt2::NamedTuple)
     return merge(nt1, nt2)
 end
 
-# -------------------------------------------------------------- #
-# Time operations
-# -------------------------------------------------------------- #
-
-"""
-    get_times(traj)::Vector{Float64}
-
-Returns the times of a trajectory as a vector.
-"""
-function get_times(traj::NamedTrajectory)
-    if traj.timestep isa Symbol
-        return cumsum([0.0, vec(traj[traj.timestep])[1:end-1]...])
-    else
-        return [0:traj.T-1...] * traj.timestep
-    end
-end
-
-"""
-    get_timesteps(::NamedTrajectory)
-
-Returns the timesteps of a trajectory as a vector.
-"""
-function get_timesteps(traj::NamedTrajectory)
-    if traj.timestep isa Symbol
-        return vec(traj[traj.timestep])
-    else
-        return fill(traj.timestep, traj.T)
-    end
-end
-
-"""
-    get_duration(::NamedTrajectory)
-
-Returns the duration of a trajectory.
-"""
-function get_duration(traj::NamedTrajectory)
-    return get_times(traj)[end]
-end
-
-
 # =========================================================================== #
+
+@testitem "add component" begin
+    using Random
+    T = 10
+    dim = 5
+    data = randn(dim, T)
+    traj = NamedTrajectory(data, (x = 1:3, y=4:4, z=5:5), timestep=:z)
+
+    traj1 = add_component(traj, :b, randn(T))
+    @test traj1.data[1:dim, :] == data
+
+    traj2 = add_component(traj, :b, randn(2, T))
+    @test traj2.data[1:dim, :] == data
+
+    da = randn(2, T)
+    db = randn(3, T)
+    traj3 = add_components(traj, (a=da, b=db))
+    @test traj3.data[1:dim, :] == data
+    @test traj3[:a] == da
+    @test traj3[:b] == db
+
+    # test adding global component
+    dg = randn(4)
+    traj4 = add_component(traj, :g, dg; type=:global)
+    @test traj4.data == data
+    @test traj4.gdata == dg
+end
+
+# *** old ***
 
 @testitem "adding and removing state matrix and vector component" begin
     include("../test/test_utils.jl")
