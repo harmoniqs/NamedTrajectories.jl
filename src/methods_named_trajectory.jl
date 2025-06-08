@@ -17,23 +17,17 @@ export remove_components
 export update!
 export update_bound!
 
+export merge
+
 # ---
 
 # TODO: Refactor 
-
-
-export merge
 export add_suffix
 export remove_suffix
 export get_suffix
 
-# TOOD: remove?
-# export convert_fixed_time
-# export convert_free_time
-
 # ---
 
-using OrderedCollections
 using TestItems
 
 using ..StructNamedTrajectory
@@ -545,19 +539,10 @@ end
 
 Returns a new NamedTrajectory object by merging `NamedTrajectory` objects. 
 
-Merge names are used to specify which components to merge by index. If no merge names are provided,
-all components are merged and name collisions are not allowed. If merge names are provided, the
-names are merged using the data from the index provided in the merge names.
+Merge names are used to specify which components to merge by index. If no merge names are provided, all components are merged and name collisions are not allowed. If merge names are provided, the names are merged using the data from the index provided in the merge names.
 
-Joined `NamedTrajectory` objects must have the same timestep. If a free time trajectory is desired,
-setting the keyword argument `free_time=true` will construct the a component for the timestep.
-In this case, the timestep symbol must be provided. 
-
-# Arguments
-- `traj1::NamedTrajectory`: The first `NamedTrajectory` object.
-- `traj2::NamedTrajectory`: The second `NamedTrajectory` object.
-- `free_time::Bool=false`: Whether to construct a free time problem.
-- `timestep_name::Symbol=:Δt`: The timestep symbol to use for free time problems.
+# Keyword Arguments
+- `timestep::Symbol`: The timestep symbol to use for free time problems. Default to the last trajectory.
 - `merge_names::Union{Nothing, NamedTuple{<:Any, <:Tuple{Vararg{Int}}}}=nothing`: The names to merge by index.
 """
 function Base.merge(traj1::NamedTrajectory, traj2::NamedTrajectory; kwargs...)
@@ -566,18 +551,12 @@ end
 
 function Base.merge(
     trajs::AbstractVector{<:NamedTrajectory};
-    free_time::Bool=false,
-    merge_names::NamedTuple{<:Any, <:Tuple{Vararg{Int}}}=(;),
-    timestep_name::Symbol=:Δt,
-    timestep_index::Int=timestep_name ∈ keys(merge_names) ? merge_names[timestep_name] : 1
-)   
+    merge_names::NamedTuple{<:Any, <:Tuple{Vararg{Int}}}=NamedTuple(),
+    timestep::Symbol=trajs[end].timestep,
+    timesteps::AbstractVector{<:Real}=get_timesteps(trajs[end])
+)
     if length(trajs) < 2
         throw(ArgumentError("At least two trajectories must be provided"))
-    end
-
-    # check timestep index 
-    if timestep_index < 1 || timestep_index > length(trajs)
-        throw(BoundsError(trajs, timestep_index))
     end
 
     # organize names to drop by trajectory index
@@ -600,37 +579,21 @@ function Base.merge(
     state_components = merge_outer([get_components(s, t) for (s, t) ∈ zip(state_names, trajs)])
     control_components = merge_outer([get_components(c, t) for (c, t) ∈ zip(control_names, trajs)])
     components = merge_outer(state_components, control_components)
-    
-    # add timesteps (allow a default value, but warn if differences are detected)
-    if free_time
-        timestep = timestep_name
-        if timestep_name ∉ keys(components)
-            components = merge_outer(
-                components, 
-                NamedTuple{(timestep_name,)}([get_timesteps(trajs[timestep_index])])
-            )
-        end
-    else
-        timestep = trajs[timestep_index].timestep
-        if timestep isa Symbol
-            times = get_timesteps(trajs[timestep_index])
-            timestep = sum(times) / length(times)
-        end
+ 
+    # add timesteps
+    if timestep ∉ keys(components)
+        components = merge_outer(components, (; timestep => timesteps,))
     end
 
-    # check for timestep differences (ignores all free time problems, 
-    # as they have key collision if unspecified)
-    if timestep_name ∉ keys(merge_names) && !allequal([t.timestep for t in trajs])
-        @warn (
-            "Automatically merging trajectories with different timesteps.\n" *
-            "To avoid this warning, specify the timestep index in merge_names."
-        )
-    end
+    # merge global data
+    gnames = [[s for s ∈ traj.gnames if s ∉ names] for (traj, names) in zip(trajs, drop_names)]
+    gcomponents = merge_outer([get_components(g, t) for (g, t) ∈ zip(gnames, trajs)])
 
     return NamedTrajectory(
         components,
-        controls=Tuple(c for c in merge_outer(control_names)),
-        timestep=free_time ? timestep_name : timestep,
+        gcomponents,
+        timestep=timestep,
+        controls=merge_outer([Tuple(c) for c in control_names]),
         bounds=merge_outer(
             [drop(traj.bounds, names) for (traj, names) in zip(trajs, drop_names)]),
         initial=merge_outer(
@@ -639,39 +602,6 @@ function Base.merge(
             [drop(traj.final, names) for (traj, names) in zip(trajs, drop_names)]),
         goal=merge_outer(
             [drop(traj.goal, names) for (traj, names) in zip(trajs, drop_names)]),
-        global_data=merge_outer(
-            [drop(traj.global_data, names) for (traj, names) in zip(trajs, drop_names)]),
-    )
-end
-
-function convert_fixed_time(
-    traj::NamedTrajectory;
-    timestep_symbol=:Δt,
-    timestep = sum(get_timesteps(traj)) / traj.T
-)
-    @assert timestep_symbol ∈ traj.control_names "Problem must be free time"
-    return remove_component(traj, timestep_symbol; new_timestep=timestep)
-end
-
-function convert_free_time(
-    traj::NamedTrajectory,
-    timestep_bounds::BoundType,
-    timestep_name=:Δt,
-)
-    @assert timestep_name ∉ traj.control_names "Problem must not be free time"
-
-    time_bound = (; timestep_name => timestep_bounds,)
-    time_data = (; timestep_name => get_timesteps(traj))
-    comp_data = get_components(traj)
-
-    return NamedTrajectory(
-        merge_outer(comp_data, time_data);
-        controls=merge_outer(traj.control_names, (timestep_name,)),
-        timestep=timestep_name,
-        bounds=merge_outer(traj.bounds, time_bound),
-        initial=traj.initial,
-        final=traj.final,
-        goal=traj.goal
     )
 end
 
@@ -820,7 +750,31 @@ end
     @test traj.gdata = orig_gdata
 end
 
+@testitem "update trajectory components via view" begin
+    traj = rand(NamedTrajectory, 5)
+
+    x_orig = deepcopy(traj.x[:, :])
+    u_orig = deepcopy(traj.u[:, :])
+
+    x_new = rand(size(x_orig)...)
+    u_new = rand(size(u_orig)...)
+
+    traj.x = deepcopy(x_new)
+    @test traj.x == traj.data[traj.components.x, :] == x_new
+
+    traj.u = deepcopy(u_new)
+    @test traj.u == traj.data[traj.components.u, :] == u_new
+
+    traj.data[traj.components.x, :] = deepcopy(x_orig)
+    @test traj.x == traj.data[traj.components.x, :] == x_orig
+
+    traj.data[traj.components.u, :] = deepcopy(u_orig)
+    @test traj.u == traj.data[traj.components.u, :] == u_orig
+end
+
 @testitem "update bound" begin
+    using Random
+
     data = randn(5, 10)
     traj = NamedTrajectory(
         data, (x = 1:3, y=4:4, z=5:5), timestep=:z, 
@@ -836,43 +790,21 @@ end
     @test traj.bounds[:x] == ([-1.0, -1.0, -1.0], [1.0, 1.0, 1.0])
 end
 
-# *** old ***
-
-@testitem "merge fixed time trajectories" begin
+@testitem "merge" begin
+    using Random
     T = 10
-    Δt = 0.1
-    traj1 = NamedTrajectory(
-        (x = rand(3,T), x1 = rand(2, T), a = rand(2, T)); 
-        timestep=Δt, controls=:a
-    )
+    traj1 = NamedTrajectory(randn(5, T), (x=1:3, y=4:4, z=5:5), timestep=:z)
+    traj2 = NamedTrajectory(randn(5, T), (a=1:3, b=4:4, c=5:5), timestep=:c)
     
-    traj2 = NamedTrajectory(
-        (x = rand(3,T), x2 = rand(2, T), a = rand(2, T)); 
-        timestep=Δt, controls=:a
-    )
-    
-    # Test merge
-    traj12 = merge(traj1, traj2, merge_names=(; a=1, x=2))
-    @test issetequal(traj12.state_names, (:x, :x1, :x2))
-    @test issetequal(traj12.control_names, (:a,))
-    @test traj12.x1 == traj1.x1
-    @test traj12.x2 == traj2.x2
-    @test traj12.a == traj1.a
-    @test traj12.x == traj2.x
+    traj3 = merge(traj1, traj2)
+    @test traj3.timestep == traj2.timestep
+    @test issetequal(traj3.names, vcat(traj1.names..., traj2.names...))
 
-    traj21 = merge([traj1, traj2], merge_names=(; a=2, x=1))
-    @test issetequal(traj21.state_names, (:x, :x1, :x2))
-    @test issetequal(traj21.control_names, (:a,))
-    @test traj21.x1 == traj1.x1
-    @test traj21.x2 == traj2.x2
-    @test traj21.a == traj2.a
-    @test traj21.x == traj1.x
+    traj4 = merge(traj1, traj2, timestep = :y)
+    @test traj4.timestep == :y
+    @test issetequal(traj3.names, vcat(traj1.names..., traj2.names...))
 
-    # Test collision
-    @error merge(traj1, traj2)
-
-    # Test free time
-    merge(traj1, traj2, merge_names=(; a=1, x=1), free_time=true).Δt == fill(Δt, T)
+    # TODO: test merge_name collisions and indices
 end
 
 @testitem "merge many trajectories" begin
@@ -881,7 +813,8 @@ end
     xs = [Symbol("x$i") for i in 1:5]
     trajs = [
         NamedTrajectory((x => rand(2, T), a = rand(2, T)); timestep=Δt, controls=:a) 
-        for x in xs]
+        for x in xs
+    ]
 
     traj = merge(trajs, merge_names=(; a=1))
     @test traj isa NamedTrajectory
@@ -907,62 +840,33 @@ end
         timestep=:Δt, controls=(:a, :Δt)
     )
     
-    traj = merge(freetraj1, freetraj2, merge_names=(; a=1, Δt=1), free_time=true)
+    traj = merge(freetraj1, freetraj2, merge_names=(; a=1, Δt=1))
     @test traj isa NamedTrajectory
     @test traj.Δt == fill(Δt, (1, T))
 
-    traj = merge(freetraj1, freetraj2, merge_names=(; a=1, Δt=1), free_time=false)
+    traj = merge(traj1, freetraj2, merge_names=(; a=1))
     @test traj isa NamedTrajectory
-    @test traj.timestep ≈ Δt
-
-    traj = merge(traj1, freetraj2, merge_names=(; a=1), free_time=true)
-    @test traj isa NamedTrajectory
-end
-
-@testitem "Free and fixed time conversion" begin
-    include("../test/test_utils.jl")
-
-    free_traj = named_trajectory_type_1(free_time=true)
-    fixed_traj = named_trajectory_type_1(free_time=false)
-    Δt_bounds = free_traj.bounds[:Δt]
-
-    # Test free to fixed time
-    @test :Δt ∉ convert_fixed_time(free_traj).control_names
-
-    # Test fixed to free time
-    @test :Δt ∈ convert_free_time(fixed_traj, Δt_bounds).control_names
-
-    # Test inverses
-    @test convert_free_time(convert_fixed_time(free_traj), Δt_bounds) == free_traj
-    @test convert_fixed_time(convert_free_time(fixed_traj, Δt_bounds)) == fixed_traj
 end
 
 @testitem "returning times" begin
     include("../test/test_utils.jl")
     T = 5
-    fixed_time_traj = get_fixed_time_traj(T=T)
     free_time_traj = get_free_time_traj(T=T)
 
-    # case: free time
     @test get_times(free_time_traj) ≈ [0.0, cumsum(vec(free_time_traj.Δt))[1:end-1]...]
-
-    # case: fixed time
-    @test get_times(fixed_time_traj) ≈ 0.1 .* [0:T-1...]
 end
 
 @testitem "returning times" begin
     include("../test/test_utils.jl")
     T = 5
-    fixed_time_traj = get_fixed_time_traj(T=T)
     free_time_traj = get_free_time_traj(T=T)
 
-    @test size(fixed_time_traj) == (
-        dim = sum(fixed_time_traj.dims[fixed_time_traj.names]), T = T
-    )
     @test size(free_time_traj) == (
         dim = sum(free_time_traj.dims[free_time_traj.names]), T = T
     )
 end
+
+# *** Refactor below ***
 
 @testitem "Add suffix" begin
     @test add_suffix(:a, "_new") == :a_new
@@ -1035,28 +939,6 @@ end
     new_traj = add_suffix(free_time_traj, suffix)
     @test get_suffix(new_traj, suffix) == new_traj
     @test get_suffix(new_traj, suffix, remove=true) == free_time_traj
-end
-
-@testitem "Updating trajectory components via view" begin
-    traj = rand(NamedTrajectory, 5)
-
-    x_orig = deepcopy(traj.x[:, :])
-    u_orig = deepcopy(traj.u[:, :])
-
-    x_new = rand(size(x_orig)...)
-    u_new = rand(size(u_orig)...)
-
-    traj.x = deepcopy(x_new)
-    @test traj.x == traj.data[traj.components.x, :] == x_new
-
-    traj.u = deepcopy(u_new)
-    @test traj.u == traj.data[traj.components.u, :] == u_new
-
-    traj.data[traj.components.x, :] = deepcopy(x_orig)
-    @test traj.x == traj.data[traj.components.x, :] == x_orig
-
-    traj.data[traj.components.u, :] = deepcopy(u_orig)
-    @test traj.u == traj.data[traj.components.u, :] == u_orig
 end
 
 end
