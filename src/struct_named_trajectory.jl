@@ -276,25 +276,34 @@ end
 # Named trajectory data processing
 # ----------------------------------------------------------------------------- #
 
+"""
+    get_bounds_from_dims(bounds, dims; dtype=Float64)
+
+Process `bounds` from allowed types using `dims` and convert to `dtype`.
+"""
 function get_bounds_from_dims(
     bounds::NamedTuple,
-    dims::NamedTuple{N, <:Tuple{Vararg{Int}}} where N,
+    dims::NamedTuple{N, <:Tuple{Vararg{Int}}} where N;
+    dtype=Float64
 )   
     bounds_dict = OrderedDict{Symbol,Any}(pairs(bounds))
     for (name, bound) ∈ bounds_dict
         bdim = dims[name]
         if bound isa Real
-            vbound = fill(bound, bdim)
+            vbound = fill(convert(dtype, bound), bdim)
             bounds_dict[name] = (-vbound, vbound)
         elseif bound isa Tuple{<:Real, <:Real}
-            bounds_dict[name] = (fill(bound[1], bdim), fill(bound[2], bdim))
-        elseif bound isa AbstractVector
+            bounds_dict[name] = (
+                fill(convert(dtype, bound[1]), bdim), 
+                fill(convert(dtype, bound[2]), bdim)
+            )
+        elseif bound isa AbstractVector{<:Real}
             if length(bound) != bdim 
                 throw(ArgumentError("Bound $name has wrong length: $(length(bound)) != $bdim"))
             end
-            bounds_dict[name] = (-bound, bound)
+            bounds_dict[name] = (-convert.(dtype, bound), convert.(dtype, bound))
         elseif bound isa BoundType
-            bounds_dict[name] = bound
+            bounds_dict[name] = (convert.(dtype, bound[1]), convert.(dtype, bound[2]))
         else
             throw(ArgumentError("Invalid bound type for $name: $(typeof(bound))"))
         end

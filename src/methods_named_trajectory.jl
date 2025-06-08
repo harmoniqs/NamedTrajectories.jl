@@ -15,13 +15,12 @@ export remove_component
 export remove_components
 
 export update!
-
+export update_bound!
 
 # ---
 
 # TODO: Refactor 
 
-export update_bound!
 
 export merge
 export add_suffix
@@ -343,56 +342,20 @@ function update!(traj::NamedTrajectory, datavec::AbstractVector{Float64}; type=:
     return nothing
 end
 
-"""
-    update_bound!(traj, name::Symbol, data::Real)
-    update_bound!(traj, name::Symbol, data::AbstractVector{<:Real})
-    update_bound!(traj, name::Symbol, data::Tuple{R, R} where R <: Real)
+""" 
+    update_bound!(traj, name, new_bound)
 
 Update the bound of a component of the trajectory.
 """
-function update_bound! end
-
 function update_bound!(
     traj::NamedTrajectory,
     name::Symbol,
-    new_bound::Real
+    new_bound
 )
-    @assert new_bound > 0 "bound must be positive"
-    new_bound = (-fill(new_bound, traj.dims[name]), fill(new_bound, traj.dims[name]))
-    update_bound!(traj, name, new_bound)
-end
-
-function update_bound!(
-    traj::NamedTrajectory,
-    name::Symbol,
-    new_bound::AbstractVector{<:Real}
-)
-    @assert all(new_bound .> 0) "bound must be positive"
-    new_bound = (-new_bound, new_bound)
-    update_bound!(traj, name, new_bound)
-end
-
-function update_bound!(
-    traj::NamedTrajectory,
-    name::Symbol,
-    new_bound::Tuple{R, R} where R <: Real
-)
-    @assert new_bound[1] < new_bound[2] "lower bound must be less than upper bound"
-    new_bound = (-fill(new_bound[1], traj.dims[name]), fill(new_bound[2], traj.dims[name]))
-    update_bound!(traj, name, new_bound)
-end
-
-function update_bound!(traj::NamedTrajectory, name::Symbol, new_bound::BoundType)
-    @assert name ∈ keys(traj.components)
-    @assert length(new_bound[1]) == length(new_bound[2]) == traj.dims[name]
-    if isempty(traj.bounds)
-        new_bounds = OrderedDict{Symbol, BoundType}()
-    else
-        new_bounds = OrderedDict(pairs(traj.bounds))
-    end
-    new_bounds[name] = new_bound
-    new_bounds = NamedTuple(new_bounds)
-    traj.bounds = new_bounds
+    @assert name in keys(traj.bounds) "update_bound! requires existing bound"
+    # reuse processing
+    new_bounds = StructNamedTrajectory.get_bounds_from_dims((; name => new_bound,), traj.dims)
+    traj.bounds = merge(traj.bounds, new_bounds)
     return nothing
 end
 
@@ -855,6 +818,22 @@ end
     update!(traj, new_data, type=:both)
     @test traj.data == orig_data
     @test traj.gdata = orig_gdata
+end
+
+@testitem "update bound" begin
+    data = randn(5, 10)
+    traj = NamedTrajectory(
+        data, (x = 1:3, y=4:4, z=5:5), timestep=:z, 
+        bounds=(x = 1,)
+    )
+    update_bound!(traj, :x, 2)
+    @test traj.bounds[:x] == ([-2.0, -2.0, -2.0], [2.0, 2.0, 2.0])
+
+    update_bound!(traj, :x, (0, 3))
+    @test traj.bounds[:x] == ([0.0, 0.0, 0.0], [3.0, 3.0, 3.0])
+
+    update_bound!(traj, :x, [1.0, 1.0, 1.0])
+    @test traj.bounds[:x] == ([-1.0, -1.0, -1.0], [1.0, 1.0, 1.0])
 end
 
 # *** old ***
