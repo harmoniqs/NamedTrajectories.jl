@@ -11,26 +11,26 @@ export get_duration
 export add_component
 export add_components
 
-# ---
-# TODO: Refactor 
-
-# None of these really work anymore...
-
 export remove_component
 export remove_components
+
 export update!
-export update_bound!
+
 
 # ---
 
+# TODO: Refactor 
+
+export update_bound!
+
 export merge
-
-export convert_fixed_time
-export convert_free_time
-
 export add_suffix
 export remove_suffix
 export get_suffix
+
+# TOOD: remove?
+# export convert_fixed_time
+# export convert_free_time
 
 # ---
 
@@ -327,26 +327,21 @@ end
     update!(traj, datavec::AbstractVector{Float64})
 
 Update the trajectory with a new datavec.
+
+Keyword arguments:
+    - `type::Symbol`: The type of the datavec, can be `:data`, `:global`, or `:both`. Default is `global`.
 """
-function update!(traj::NamedTrajectory, datavec::AbstractVector{Float64})
-    @assert length(datavec) == traj.dim * traj.T
-    traj.datavec = datavec
-    traj.data = reshape(view(datavec, :), traj.dim, traj.T)
+function update!(traj::NamedTrajectory, datavec::AbstractVector{Float64}; type=:data)
+    if type == :data
+        traj.datavec[:] = datavec
+    elseif type == :global
+        traj.gdata[:] = datavec
+    elseif type == :both
+        traj.datavec[:] = datavec[1:(traj.dim * traj.T)]
+        traj.gdata[:] = datavec[(traj.dim * traj.T + 1):(traj.dim * traj.T + traj.gdim)]
+    end
     return nothing
 end
-
-"""
-    update!(traj::NamedTrajectory, data::NamedTuple)
-
-Update the global data of the trajectory with a NamedTuple.
-"""
-function update!(traj::NamedTrajectory, data::NamedTuple)
-    @assert all([k ∈ keys(traj.global_data) for k in keys(data)])
-    @assert all([length(v) == traj.global_dims[k] for (k, v) in pairs(data)])
-    traj.global_data = merge(traj.global_data, data)
-    return nothing
-end
-
 
 """
     update_bound!(traj, name::Symbol, data::Real)
@@ -825,188 +820,44 @@ end
     @test :g1 ∉ traj4.gnames
     @test traj5.gdata == [2.0]
     @test traj5.gcomponents == (g2=1:1)    
+end
 
+@testitem "update! data" begin
+    using Random
+    T = 10
+    data = randn(5, T)
+    gdata = [1.0, 2.0]
+    orig_data = copy(data)
+    orig_gdata = copy(gdata)
+    traj = NamedTrajectory(
+        data, (x = 1:3, y=4:4, z=5:5), timestep=:z, 
+        gdata=gdata, gcomponents=(g1=1:1, g2=2:2)
+    )
+    
+    # update data
+    update!(traj, :x, zeros(traj.dims[:x], T))
+    @test traj[:x] == zeros(traj.dims[:x], T)
+    @test traj[:y] == orig_data[traj.components[:y], :]
+    @test traj[:z] == orig_data[traj.components[:z], :]
+
+    # update datavec
+    update!(traj, ones(traj.dim * traj.T))
+    @test traj.datavec == ones(traj.dim * traj.T)
+    @test traj.gdata == orig_gdata
+
+    # update global data
+    update!(traj, zeros(traj.gdim), type=:global)
+    @test traj.datavec == ones(traj.dim * traj.T) # stays the same from before
+    @test traj.gdata == zeros(traj.gdim) # changes
+
+    # update both
+    new_data = vcat(vec(orig_data), orig_gdata)
+    update!(traj, new_data, type=:both)
+    @test traj.data == orig_data
+    @test traj.gdata = orig_gdata
 end
 
 # *** old ***
-
-@testitem "adding and removing state matrix and vector component" begin
-    include("../test/test_utils.jl")
-    T = 5
-    fixed_time_traj = get_fixed_time_traj(T=T)
-    free_time_traj = get_free_time_traj(T=T)
-    
-    # adding state matrix component
-    name = :z
-    data = rand(2, T)
-    type = :state
-    
-    # case: fixed time
-    add_component!(fixed_time_traj, name, data; type=type)
-    @test fixed_time_traj.z ≈ data
-    @test name ∈ fixed_time_traj.names
-    @test name ∈ fixed_time_traj.state_names
-
-    # case: free time
-    add_component!(free_time_traj, name, data; type=type)
-    @test free_time_traj.z ≈ data
-    @test name ∈ free_time_traj.names
-    @test name ∈ free_time_traj.state_names
-
-    # adding state vector component
-    name = :y
-    data = rand(T)
-    type = :state
-
-    # case: fixed time
-    add_component!(fixed_time_traj, name, data; type=type)
-    @test vec(fixed_time_traj.y) ≈ vec(data)
-    @test name ∈ fixed_time_traj.names
-    @test name ∈ fixed_time_traj.state_names
-    
-    # case: free time
-    add_component!(free_time_traj, name, data; type=type)
-    @test vec(free_time_traj.y) ≈ vec(data)
-    @test name ∈ free_time_traj.names
-    @test name ∈ fixed_time_traj.state_names
-
-    # removing state components
-    names = [:z, :y]
-
-    # case: fixed time
-    fixed_time_traj = remove_components(fixed_time_traj, names)
-    @test all(name ∉ fixed_time_traj.names for name in names)
-    @test all(name ∉ fixed_time_traj.state_names for name in names)
-
-    # case: free time
-    free_time_traj = remove_components(free_time_traj, names)
-    @test all(name ∉ free_time_traj.names for name in names)
-    @test all(name ∉ free_time_traj.state_names for name in names)
-end
-
-@testitem "adding and removing control matrix component" begin
-    include("../test/test_utils.jl")
-    T = 5
-    fixed_time_traj = get_fixed_time_traj(T=T)
-    free_time_traj = get_free_time_traj(T=T)
-
-    # testing adding control component
-    name = :a
-    data = rand(2, T)
-    type = :control
-
-    # case: fixed time
-    add_component!(fixed_time_traj, name, data; type=type)
-    @test fixed_time_traj.a ≈ data
-    @test name ∈ fixed_time_traj.names
-    @test name ∈ fixed_time_traj.control_names
-
-    # case: free time
-    add_component!(free_time_traj, name, data; type=type)
-    @test free_time_traj.a ≈ data
-    @test name ∈ free_time_traj.names
-    @test name ∈ free_time_traj.control_names
-
-    # testing removing control component
-    name = :a
-
-    # case: fixed time
-    fixed_time_traj = remove_component(fixed_time_traj, name)
-    @test name ∉ fixed_time_traj.names
-    @test name ∉ fixed_time_traj.control_names
-
-    # case: free time
-    free_time_traj = remove_component(free_time_traj, name)
-    @test name ∉ free_time_traj.names
-    @test name ∉ free_time_traj.control_names
-end
-
-@testitem "adding control vector component" begin
-    include("../test/test_utils.jl")
-    T = 5
-    fixed_time_traj = get_fixed_time_traj(T=T)
-    free_time_traj = get_free_time_traj(T=T)
-
-    # testing adding control vector component
-    name = :b
-    data = rand(T)
-    type = :control
-
-    # case: fixed time
-    add_component!(fixed_time_traj, name, data; type=type)
-    @test vec(fixed_time_traj.b) ≈ vec(data)
-    @test name ∈ fixed_time_traj.names
-    @test name ∈ fixed_time_traj.control_names
-
-    # case: free time
-    add_component!(free_time_traj, name, data; type=type)
-    @test vec(free_time_traj.b) ≈ vec(data)
-    @test name ∈ free_time_traj.names
-    @test name ∈ free_time_traj.control_names
-end
-
-@testitem "adding and removing slack matrix component" begin
-    include("../test/test_utils.jl")
-    T = 5
-    fixed_time_traj = get_fixed_time_traj(T=T)
-    free_time_traj = get_free_time_traj(T=T)
-
-    # testing adding slack matrix component
-    name = :s
-    data = rand(2, T)
-    type = :slack
-
-    # case: fixed time
-    add_component!(fixed_time_traj, name, data; type=type)
-    @test fixed_time_traj.s ≈ data
-    @test name ∈ fixed_time_traj.names
-
-    # case: free time
-    add_component!(free_time_traj, name, data; type=type)
-    @test free_time_traj.s ≈ data
-    @test name ∈ free_time_traj.names
-
-    # testing removing slack matrix component
-    name = :s
-
-    # case: fixed time
-    fixed_time_traj = remove_component(fixed_time_traj, name)
-    @test name ∉ fixed_time_traj.names
-    @test name ∉ fixed_time_traj.state_names
-
-    # case: free time
-    free_time_traj = remove_component(free_time_traj, name)
-    @test name ∉ free_time_traj.names
-    @test name ∉ free_time_traj.state_names
-end
-
-@testitem "updating trajectory data" begin
-    include("../test/test_utils.jl")
-    T = 5
-    x_dim = 3
-    fixed_time_traj = get_fixed_time_traj(T=T, x_dim=x_dim)
-    free_time_traj = get_free_time_traj(T=T, x_dim=x_dim)
-
-    name = :x
-    data = rand(x_dim, T)
-
-    # case: fixed time
-    update!(fixed_time_traj, name, data)
-    @test fixed_time_traj.x == data
-
-    # case: free time
-    update!(free_time_traj, name, data)
-    @test free_time_traj.x == data
-end
-
-@testitem "update all data" begin
-    Z = NamedTrajectory((x=rand(2, 5), y=rand(1,5)), controls=:y, timestep=1.0)
-    data_original = deepcopy(Z.data)
-    datavec_new = rand(length(Z.datavec))
-    update!(Z, datavec_new)
-    @test Z.datavec == datavec_new
-    @test vec(Z.data) == datavec_new
-end
 
 @testitem "merge fixed time trajectories" begin
     T = 10

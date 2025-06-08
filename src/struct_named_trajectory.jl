@@ -27,7 +27,8 @@ dimensions, initial and final conditions, goal states, and components.
 This struct is designed to hold trajectory data in a named format, allowing for easy access 
 to knot points by `Symbol`.
 
-NamedTrajectory is designed to make allocation-free access easy to write.
+NamedTrajectory is designed to make allocation-free access easy to write. The data
+can be updated after construction, but the fields cannot.
 """
 mutable struct NamedTrajectory{
     R <: Real,
