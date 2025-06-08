@@ -269,25 +269,40 @@ Remove a set of components from the trajectory.
 function remove_components(
     traj::NamedTrajectory,
     names::AbstractVector{<:Symbol};
-    new_timestep::Union{Nothing, Real}=nothing,
-    new_control_name::Union{Nothing, Symbol}=nothing,
-    new_control_names::Union{Nothing, Tuple{Vararg{Symbol}}}=nothing
+    new_timestep::Union{Nothing, Symbol}=nothing,
+    new_controls::Union{Nothing, Symbol, Tuple{Vararg{Symbol}}}=nothing
 )
-    @assert all([n ∈ traj.names for n ∈ names])
-    @assert isnothing(new_control_name) || isnothing(new_control_names) "Conflicting new control names provided"
-    new_control_names = isnothing(new_control_names) ? () : new_control_names
-    new_control_names = isnothing(new_control_name) ? (new_control_names...,) : (new_control_name,)
-    @assert isnothing(new_control_names) || all([n ∈ traj.names && n ∉ names for n ∈ new_control_names]) "New control names must be valid components"
+    comps_data = NamedTuple(get_components(setdiff(traj.names, names), traj))
+    gcomps_data = NamedTuple(get_components(setdiff(traj.gnames, names), traj))
 
-    comps = NamedTuple([
-        (key => data) for (key, data) ∈ pairs(get_components(traj)) if !(key ∈ names)
-    ])
+    if traj.timestep in names
+        @assert !isnothing(new_timestep) "New timestep must be provided if removing the timestep component"
+        timestep = new_timestep
+    else
+        timestep = traj.timestep
+    end
 
-    control_names = [n for n ∈ traj.control_names if n ∉ names]
-    @assert !isempty(control_names) || !isnothing(new_control_names) "At least one control must be available"
+    controls = setdiff(traj.control_names, names)
+    if !isnothing(new_timestep)
+        controls = vcat(controls..., new_timestep)
+    end
+    if !isnothing(new_controls)
+        if new_controls isa Symbol
+            controls = vcat(controls..., new_controls)
+        elseif new_controls isa Tuple
+            controls = vcat(controls..., new_controls...)
+        end
+    end
+
     return NamedTrajectory(
-        comps, traj; 
-        new_control_names=new_control_names, new_timestep=new_timestep
+        comps_data,
+        gcomps_data;
+        timestep=timestep,
+        controls=Tuple(controls),
+        bounds=NamedTuple(k => v for (k, v) in pairs(traj.bounds) if k ∉ names),
+        initial=NamedTuple(k => v for (k, v) in pairs(traj.initial) if k ∉ names),
+        final=NamedTuple(k => v for (k, v) in pairs(traj.final) if k ∉ names),
+        goal=NamedTuple(k => v for (k, v) in pairs(traj.goal) if k ∉ names),
     )
 end
 
@@ -775,6 +790,42 @@ end
     traj4 = add_component(traj, :g, dg; type=:global)
     @test traj4.data == data
     @test traj4.gdata == dg
+end
+
+@testitem "remove component" begin
+    data = randn(5, 10)
+    traj = NamedTrajectory(data, (x = 1:3, y=4:4, z=5:5), timestep=:z)
+    traj1 = remove_component(traj, :y)
+    for name in [:x, :z]
+        @test name ∈ traj1.names
+        @test traj1[name] == traj[name]
+    end
+
+    # test removing timestep 
+    traj2 = remove_component(traj1, :z, new_timestep=:y)
+    for name in [:x, :y]
+        @test name ∈ traj2.names
+        @test traj2[name] == traj1[name]
+    end
+    @test traj2.timestep == :y
+
+    # remove multiple
+    da = randn(2, T)
+    db = randn(3, T)
+    traj3 = add_components(traj, (a=da, b=db))
+    @test remove_components(traj3, [:a, :b]) == traj
+
+    # test removing global component
+
+    traj4 = NamedTrajectory(
+        data, (x = 1:3, y=4:4, z=5:5), timestep=:z, 
+        gdata=[1.0, 2.0], gcomponents=(g1=1:1, g2=2:2)
+    )
+    traj5 = remove_component(traj4, :g1)
+    @test :g1 ∉ traj4.gnames
+    @test traj5.gdata == [2.0]
+    @test traj5.gcomponents == (g2=1:1)    
+
 end
 
 # *** old ***

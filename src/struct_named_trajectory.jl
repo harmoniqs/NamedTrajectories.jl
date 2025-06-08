@@ -85,7 +85,7 @@ function NamedTrajectory(
     @assert :data ∉ keys(comps) "data is a reserved name"
     @assert isdisjoint(keys(comps), keys(gcomponents)) "components and global components should use unique names"
 
-    @assert timestep isa Symbol && timestep ∈ keys(comps)
+    @assert timestep isa Symbol && timestep ∈ keys(comps) "Missing timestep in components"
 
     controls = controls isa Symbol ? (controls,) : controls
 
@@ -181,7 +181,7 @@ function NamedTrajectory(
 
         return NamedTrajectory(
             vec(data), comps, T; 
-            gdata=gdata, gcomps=gcomps, kwargs...
+            gdata=gdata, gcomponents=gcomps, kwargs...
         )
     else
         return NamedTrajectory(vec(data), comps, T; kwargs...)

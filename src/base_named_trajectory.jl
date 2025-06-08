@@ -94,7 +94,7 @@ function Base.getproperty(traj::NamedTrajectory, symb::Symbol)
         return view(traj.data, indices, :)
     elseif symb in traj.gnames
         indices = traj.gcomponents[symb]
-        return view(traj.gdata, indices, :)
+        return view(traj.gdata, indices)
     end
 end
 
