@@ -6,7 +6,13 @@ using ..StructNamedTrajectory
 using ..StructKnotPoint
 
 
-Base.show(io::IO, Z::NamedTrajectory) = print(io, Z.components, ", T = ", Z.T)
+function Base.show(io::IO, Z::NamedTrajectory)
+    if isempty(Z.gdata)
+        print(io, Z.components, ", T = ", Z.T)
+    else
+        print(io, Z.components, ", T = ", Z.T, ", ", Z.gcomponents)
+    end
+end
 
 """
     length(Z::NamedTrajectory) = Z.dim * Z.T + Z.global_dim
