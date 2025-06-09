@@ -25,31 +25,26 @@ function Base.rand(
     ::Type{NamedTrajectory},
     T::Int;
     timestep_value::Float64=1.0,
-    timestep_name::Symbol=:Δt,
-    free_time::Bool=false,
-    timestep::Union{Float64,Symbol}=free_time ? timestep_name : timestep_value,
+    timestep::Symbol=:Δt,
+    state::Symbol=:x,
+    control::Symbol=:u,
     state_dim::Int=3,
     control_dim::Int=2
 )
     data = (
-        x = randn(state_dim, T),
-        u = randn(control_dim, T)
+        state => randn(state_dim, T),
+        control => randn(control_dim, T),
+        timestep => fill(timestep_value, T)
     )
 
-    if timestep isa Symbol
-        data = merge(data, NamedTuple((timestep => fill(timestep_value, T),)))
-    end
-
-    return NamedTrajectory(data; timestep=timestep, controls=:u)
+    return NamedTrajectory(data; timestep=timestep, controls=(control, timestep))
 end
 
 # =========================================================================== #
 
 @testitem "random trajectories" begin
     @test rand(NamedTrajectory, 5) isa NamedTrajectory
-    @test rand(NamedTrajectory, 5; timestep=0.1).timestep == 0.1
     @test rand(NamedTrajectory, 5; timestep=:dt).timestep == :dt
-    @test rand(NamedTrajectory, 5; free_time=true).timestep isa Symbol
 end
 
 end
