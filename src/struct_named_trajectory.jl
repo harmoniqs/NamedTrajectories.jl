@@ -379,14 +379,15 @@ end
     @test traj.timestep == :Δt
     @test traj.dim == n
     @test traj.T == T
-    @test traj.names == [:x, :y, :Δt]
+    @test traj.names == (:x, :y, :Δt)
 
     traj = NamedTrajectory(data, (x = 1:3, y=4:4, z=5:5), timestep=:z)
     @test traj.data ≈ data
     @test traj.timestep == :z
     @test traj.dim == n
     @test traj.T == T
-    @test traj.names == [:x, :y, :z]
+    @test traj.names == (:x, :y, :z)
+
 end
 
 @testitem "Construct from component data" begin
@@ -423,12 +424,12 @@ end
     @test traj.T == T
     @test traj.dim == dim
     @test length(traj.gdata) == gdim
-    @test traj.names = [:x, :u, :Δt]
+    @test traj.names == (:x, :u, :Δt)
     @test traj.state_names == (:x,)
     @test traj.control_names == (:u, :Δt)
-    @test traj.gnames == [:α, :β]
+    @test traj.gnames == (:α, :β)
 
-    comps_res = NamedTuple([(k => traj.data[v, :]) for (k, v) in pairs(traj.components)]) 
+    comps_res = NamedTuple([(k => traj.data[v, :]) for (k, v) in pairs(traj.components)])
     @test comps_res == comps_data
 
     gres = NamedTuple([(k => traj.gdata[v]) for (k, v) in pairs(traj.gcomponents)])
@@ -436,11 +437,11 @@ end
 
     # ignore global
     # ---
-    traj = NamedTrajectory(comps_data)
+    traj = NamedTrajectory(comps_data, controls=control)
 
     @test traj.T == T
     @test traj.dim == dim
-    @test traj.names = [:x, :u, :Δt]
+    @test traj.names == (:x, :u, :Δt)
     @test traj.state_names == (:x,)
     @test traj.control_names == (:u, :Δt)
     @test isempty(traj.gnames)

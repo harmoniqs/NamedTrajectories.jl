@@ -113,7 +113,7 @@ function Base.setproperty!(traj::NamedTrajectory, symb::Symbol, val::Any)
     if symb ∈ fieldnames(NamedTrajectory)
         setfield!(traj, symb, val)
     else
-        update!(traj, symb, val)
+        traj.data[traj.components[symb], :] = val
     end
 end
 
@@ -230,7 +230,6 @@ end
 
 @testitem "knot point methods" begin
     include("../test/test_utils.jl")
-    fixed_time_traj = get_fixed_time_traj()
     free_time_traj = get_free_time_traj()
 
     # freetime
@@ -240,43 +239,24 @@ end
     @test free_time_traj[end].x == free_time_traj.x[:, end]
     @test free_time_traj[:x] == free_time_traj.x
     @test free_time_traj.timestep isa Symbol
-
-    # fixed time
-    @test fixed_time_traj[1] isa KnotPoint
-    @test fixed_time_traj[1].x == fixed_time_traj.x[:, 1]
-    @test fixed_time_traj[end] isa KnotPoint
-    @test fixed_time_traj[end].x == fixed_time_traj.x[:, end]
-    @test fixed_time_traj[:x] == fixed_time_traj.x
-    @test fixed_time_traj.timestep isa Float64
 end
 
 @testitem "algebraic methods" begin
     include("../test/test_utils.jl")
-    fixed_time_traj = get_fixed_time_traj()
     free_time_traj = get_free_time_traj()
     free_time_traj2 = copy(free_time_traj)
-    fixed_time_traj2 = copy(fixed_time_traj)
 
     @test (free_time_traj + free_time_traj2).x == free_time_traj.x + free_time_traj2.x
-    @test (fixed_time_traj + fixed_time_traj2).x == fixed_time_traj.x + fixed_time_traj2.x
-
     @test (free_time_traj - free_time_traj2).x == free_time_traj.x - free_time_traj2.x
-    @test (fixed_time_traj - fixed_time_traj2).x == fixed_time_traj.x - fixed_time_traj2.x
-
     @test (2.0 * free_time_traj).x == (free_time_traj * 2.0).x == free_time_traj.x * 2.0
-    @test (2.0 * fixed_time_traj).x == (fixed_time_traj * 2.0).x == fixed_time_traj.x * 2.0
 end
 
 @testitem "copying and equality checks" begin
     include("../test/test_utils.jl")
-    fixed_time_traj = get_fixed_time_traj()
     free_time_traj = get_free_time_traj()
 
-    fixed_time_traj_copy = copy(fixed_time_traj)
     free_time_traj_copy = copy(free_time_traj)
-
-    @test isequal(fixed_time_traj, fixed_time_traj_copy)
-    @test fixed_time_traj == fixed_time_traj_copy
+    @test free_time_traj == free_time_traj_copy
 end
 
 

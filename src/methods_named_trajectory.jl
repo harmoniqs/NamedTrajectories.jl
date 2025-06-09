@@ -670,7 +670,8 @@ end
 end
 
 @testitem "remove component" begin
-    data = randn(5, 10)
+    T = 10
+    data = randn(5, T)
     traj = NamedTrajectory(data, (x = 1:3, y=4:4, z=5:5), timestep=:z)
     traj1 = remove_component(traj, :y)
     for name in [:x, :z]
@@ -679,10 +680,10 @@ end
     end
 
     # test removing timestep 
-    traj2 = remove_component(traj1, :z, new_timestep=:y)
+    traj2 = remove_component(traj, :z, new_timestep=:y)
     for name in [:x, :y]
         @test name ∈ traj2.names
-        @test traj2[name] == traj1[name]
+        @test traj2[name] == traj[name]
     end
     @test traj2.timestep == :y
 
@@ -699,9 +700,9 @@ end
         gdata=[1.0, 2.0], gcomponents=(g1=1:1, g2=2:2)
     )
     traj5 = remove_component(traj4, :g1)
-    @test :g1 ∉ traj4.gnames
+    @test :g1 ∉ traj5.gnames
     @test traj5.gdata == [2.0]
-    @test traj5.gcomponents == (g2=1:1)    
+    @test traj5.gcomponents == (g2 = 1:1,)    
 end
 
 @testitem "update! data" begin
@@ -736,7 +737,7 @@ end
     new_data = vcat(vec(orig_data), orig_gdata)
     update!(traj, new_data, type=:both)
     @test traj.data == orig_data
-    @test traj.gdata = orig_gdata
+    @test traj.gdata == orig_gdata
 end
 
 @testitem "update trajectory components via view" begin
@@ -798,9 +799,9 @@ end
 end
 
 @testitem "returning times" begin
-    data = randn(5, T)
+    data = randn(5, 10)
     traj = NamedTrajectory(data, (x=1:3, y=4:4, z=5:5), timestep=:z)
-    @test get_times(free_time_traj) ≈ [0.0, cumsum(data[end, 1:end-1])...]
+    @test get_times(traj) ≈ [0.0, cumsum(data[end, 1:end-1])...]
 end
 
 @testitem "suffix tests" begin

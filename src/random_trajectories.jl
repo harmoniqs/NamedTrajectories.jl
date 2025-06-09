@@ -31,13 +31,16 @@ function Base.rand(
     state_dim::Int=3,
     control_dim::Int=2
 )
-    data = (
+    comps_data = (;
         state => randn(state_dim, T),
         control => randn(control_dim, T),
-        timestep => fill(timestep_value, T)
+        timestep => fill(timestep_value, 1, T)
     )
 
-    return NamedTrajectory(data; timestep=timestep, controls=(control, timestep))
+    return NamedTrajectory(
+        comps_data, NamedTuple(); 
+        timestep=timestep, controls=(control, timestep)
+    )
 end
 
 # =========================================================================== #
