@@ -19,12 +19,11 @@ function Base.getproperty(slice::KnotPoint, symb::Symbol)
     end
 end
 
-function Base.getindex(slice::KnotPoint, symb::Symbol) # is this method redundant? i.e. should we just dispatch to getproperty?
+function Base.getindex(slice::KnotPoint, symb::Symbol)
     if symb in fieldnames(KnotPoint)
         return getfield(slice, symb)
     else
-        indices = slice.components[symb]
-        return view(slice.data, indices)
+        return view(slice.data, slice.components[symb])
     end
 end
 
@@ -35,7 +34,7 @@ Dispatches setting properties of knot points as either setting a component or a 
 """
 function Base.setproperty!(slice::KnotPoint, symb::Symbol, val::Any)
     if symb in fieldnames(KnotPoint)
-        setfield!(slice, symb, val) # will throw error since KnotPoint is an immutable struct
+        setfield!(slice, symb, val) # will error (KnotPoint is an immutable struct)
     else
         update!(slice, symb, val)
     end
@@ -59,6 +58,7 @@ function update!(slice::KnotPoint, symb::Symbol, data::AbstractVector{Float64})
     return nothing
 end
 
+# =========================================================================== #
 
 @testitem "Updating trajectory knot points via view" begin
     traj = rand(NamedTrajectory, 5)

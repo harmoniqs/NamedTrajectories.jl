@@ -7,15 +7,18 @@ using ..StructNamedTrajectory
 """
     KnotPoint constructor
 """
-struct KnotPoint
+struct KnotPoint{
+    R <: Real,
+    CNames, CTypes <: StructNamedTrajectory.ComponentType,
+    N <: Tuple{Vararg{Symbol}},
+    CN <: Tuple{Vararg{Symbol}}
+}
     t::Int
-    data::AbstractVector{Float64}
-    timestep::Float64
-    components::NamedTuple{
-        cnames, <:Tuple{Vararg{AbstractVector{Int}}}
-    } where cnames
-    names::Tuple{Vararg{Symbol}}
-    control_names::Tuple{Vararg{Symbol}}
+    data::AbstractVector{R}
+    timestep::R
+    components::NamedTuple{CNames, CTypes}
+    names::N
+    control_names::CN
 end
 
 end
