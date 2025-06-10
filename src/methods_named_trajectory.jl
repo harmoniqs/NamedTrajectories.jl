@@ -156,27 +156,27 @@ function add_components(
 )
     if type == :global
         @assert all([c isa AbstractVector for c in values(comps_data)])
-        @assert all([k ∉ keys(traj.gcomponents) for k in keys(comps_data)])
+        @assert all([k ∉ keys(traj.global_components) for k in keys(comps_data)])
 
-        gdata = vcat(traj.gdata, vcat(values(comps_data)...))
+        global_data = vcat(traj.global_data, vcat(values(comps_data)...))
 
         # update global components
-        start_idx = traj.gdim + 1
+        start_idx = traj.global_dim + 1
         gcomps_pairs = []
         for (k, v) in pairs(comps_data)
             stop_idx = start_idx + length(v) - 1
             push!(gcomps_pairs, k => (start_idx:stop_idx))
             start_idx = stop_idx + 1
         end
-        gcomps = merge(traj.gcomponents, gcomps_pairs)
+        gcomps = merge(traj.global_components, gcomps_pairs)
 
-        println(typeof(gdata))
+        println(typeof(global_data))
 
         return NamedTrajectory(
             traj.datavec,
             traj; 
-            gdata=gdata, 
-            gcomponents=gcomps,
+            global_data=global_data, 
+            global_components=gcomps,
             kwargs...
         )
     elseif type ∈ [:state, :control, :slack]
@@ -261,7 +261,7 @@ function remove_components(
     new_controls::Union{Nothing, Symbol, Tuple{Vararg{Symbol}}}=nothing
 )
     comps_data = NamedTuple(get_components(setdiff(traj.names, names), traj))
-    gcomps_data = NamedTuple(get_components(setdiff(traj.gnames, names), traj))
+    gcomps_data = NamedTuple(get_components(setdiff(traj.global_names, names), traj))
 
     if traj.timestep in names
         @assert !isnothing(new_timestep) "New timestep must be provided if removing the timestep component"
@@ -323,10 +323,10 @@ function update!(traj::NamedTrajectory, datavec::AbstractVector{Float64}; type=:
     if type == :data
         traj.datavec[:] = datavec
     elseif type == :global
-        traj.gdata[:] = datavec
+        traj.global_data[:] = datavec
     elseif type == :both
         traj.datavec[:] = datavec[1:(traj.dim * traj.T)]
-        traj.gdata[:] = datavec[(traj.dim * traj.T + 1):(traj.dim * traj.T + traj.gdim)]
+        traj.global_data[:] = datavec[(traj.dim * traj.T + 1):(traj.dim * traj.T + traj.global_dim)]
     end
     return nothing
 end
@@ -406,12 +406,12 @@ function Base.merge(
     end
 
     # merge global data
-    gnames = [[s for s ∈ traj.gnames if s ∉ names] for (traj, names) in zip(trajs, drop_names)]
-    gcomponents = merge_outer([get_components(g, t) for (g, t) ∈ zip(gnames, trajs)])
+    global_names = [[s for s ∈ traj.global_names if s ∉ names] for (traj, names) in zip(trajs, drop_names)]
+    global_components = merge_outer([get_components(g, t) for (g, t) ∈ zip(global_names, trajs)])
 
     return NamedTrajectory(
         components,
-        gcomponents,
+        global_components,
         timestep=timestep,
         controls=merge_outer([Tuple(c) for c in control_names]),
         bounds=merge_outer(
@@ -520,7 +520,7 @@ end
 function add_suffix(traj::NamedTrajectory, suffix::String)
     return NamedTrajectory(
         add_suffix(traj.names, traj, suffix),
-        add_suffix(traj.gnames, traj, suffix);
+        add_suffix(traj.global_names, traj, suffix);
         controls=add_suffix(traj.control_names, suffix),
         timestep=add_suffix(traj.timestep, suffix),
         bounds=add_suffix(traj.bounds, suffix),
@@ -619,10 +619,10 @@ function get_suffix(
         components = remove_suffix(components, suffix; exclude=exclude)
     end
 
-    gcomponent_names = [n for n in traj.gnames if endswith(n, suffix)]
-    gcomponents = get_components(gcomponent_names, traj)
+    gcomponent_names = [n for n in traj.global_names if endswith(n, suffix)]
+    global_components = get_components(gcomponent_names, traj)
     if remove
-        gcomponents = remove_suffix(gcomponents, suffix; exclude=exclude)
+        global_components = remove_suffix(global_components, suffix; exclude=exclude)
     end
 
     if isempty(component_names)
@@ -631,7 +631,7 @@ function get_suffix(
 
     return NamedTrajectory(
         components,
-        gcomponents,
+        global_components,
         timestep=new_timestep,
         bounds=get_suffix(traj.bounds, suffix, remove=remove),
         initial=get_suffix(traj.initial, suffix, remove=remove),
@@ -666,7 +666,7 @@ end
     dg = randn(4)
     traj4 = add_component(traj, :g, dg; type=:global)
     @test traj4.data == data
-    @test traj4.gdata == dg
+    @test traj4.global_data == dg
 end
 
 @testitem "remove component" begin
@@ -697,24 +697,24 @@ end
 
     traj4 = NamedTrajectory(
         data, (x = 1:3, y=4:4, z=5:5), timestep=:z, 
-        gdata=[1.0, 2.0], gcomponents=(g1=1:1, g2=2:2)
+        global_data=[1.0, 2.0], global_components=(g1=1:1, g2=2:2)
     )
     traj5 = remove_component(traj4, :g1)
-    @test :g1 ∉ traj5.gnames
-    @test traj5.gdata == [2.0]
-    @test traj5.gcomponents == (g2 = 1:1,)    
+    @test :g1 ∉ traj5.global_names
+    @test traj5.global_data == [2.0]
+    @test traj5.global_components == (g2 = 1:1,)    
 end
 
 @testitem "update! data" begin
     using Random
     T = 10
     data = randn(5, T)
-    gdata = [1.0, 2.0]
+    global_data = [1.0, 2.0]
     orig_data = copy(data)
-    orig_gdata = copy(gdata)
+    orig_global_data = copy(global_data)
     traj = NamedTrajectory(
         data, (x = 1:3, y=4:4, z=5:5), timestep=:z, 
-        gdata=gdata, gcomponents=(g1=1:1, g2=2:2)
+        global_data=global_data, global_components=(g1=1:1, g2=2:2)
     )
     
     # update data
@@ -726,18 +726,18 @@ end
     # update datavec
     update!(traj, ones(traj.dim * traj.T))
     @test traj.datavec == ones(traj.dim * traj.T)
-    @test traj.gdata == orig_gdata
+    @test traj.global_data == orig_global_data
 
     # update global data
-    update!(traj, zeros(traj.gdim), type=:global)
+    update!(traj, zeros(traj.global_dim), type=:global)
     @test traj.datavec == ones(traj.dim * traj.T) # stays the same from before
-    @test traj.gdata == zeros(traj.gdim) # changes
+    @test traj.global_data == zeros(traj.global_dim) # changes
 
     # update both
-    new_data = vcat(vec(orig_data), orig_gdata)
+    new_data = vcat(vec(orig_data), orig_global_data)
     update!(traj, new_data, type=:both)
     @test traj.data == orig_data
-    @test traj.gdata == orig_gdata
+    @test traj.global_data == orig_global_data
 end
 
 @testitem "update trajectory components via view" begin
@@ -809,18 +809,18 @@ end
     data = randn(5, T)
     traj = NamedTrajectory(
         data, (x = 1:3, y=4:4, z=5:5), timestep=:z, 
-        gdata=[1.0, 2.0], gcomponents=(a = 1:2, ), bounds = (x = 1.0, y = 2.0,)
+        global_data=[1.0, 2.0], global_components=(a = 1:2, ), bounds = (x = 1.0, y = 2.0,)
     )    
     suffix = "_test"
     traj_suffixed = add_suffix(traj, suffix)
     @test all(endswith.(keys(traj_suffixed.components), suffix))
-    @test all(endswith.(keys(traj_suffixed.gcomponents), suffix))
+    @test all(endswith.(keys(traj_suffixed.global_components), suffix))
     @test traj_suffixed.timestep == add_suffix(traj.timestep, suffix)
-    @test traj_suffixed.gdata == traj.gdata
-    @test traj_suffixed.gcomponents == add_suffix(traj.gcomponents, suffix)
+    @test traj_suffixed.global_data == traj.global_data
+    @test traj_suffixed.global_components == add_suffix(traj.global_components, suffix)
     @test traj_suffixed.data == traj.data
     @test traj_suffixed.names == add_suffix(traj.names, suffix)
-    @test traj_suffixed.gnames == add_suffix(traj.gnames, suffix)
+    @test traj_suffixed.global_names == add_suffix(traj.global_names, suffix)
     @test traj_suffixed.control_names == add_suffix(traj.control_names, suffix)
     @test traj_suffixed.bounds == add_suffix(traj.bounds, suffix)
 

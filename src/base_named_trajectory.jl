@@ -7,10 +7,10 @@ using ..StructKnotPoint
 
 
 function Base.show(io::IO, Z::NamedTrajectory)
-    if isempty(Z.gdata)
+    if isempty(Z.global_data)
         print(io, Z.components, ", T = ", Z.T)
     else
-        print(io, Z.components, ", T = ", Z.T, ", ", Z.gcomponents)
+        print(io, Z.components, ", T = ", Z.T, ", ", Z.global_components)
     end
 end
 
@@ -22,9 +22,9 @@ function Base.length(Z::NamedTrajectory)
 end
 
 """
-    size(Z::NamedTrajectory) = (dim = Z.dim, T = Z.T, gdim = Z.gdim)
+    size(Z::NamedTrajectory) = (dim = Z.dim, T = Z.T, global_dim = Z.global_dim)
 """
-Base.size(Z::NamedTrajectory) = (dim = Z.dim, T = Z.T, gdim = Z.gdim)
+Base.size(Z::NamedTrajectory) = (dim = Z.dim, T = Z.T, global_dim = Z.global_dim)
 
 """
     copy(::NamedTrajectory)
@@ -32,7 +32,7 @@ Base.size(Z::NamedTrajectory) = (dim = Z.dim, T = Z.T, gdim = Z.gdim)
 Returns a copy of the trajectory data and global data.
 """
 function Base.copy(traj::NamedTrajectory)
-    return NamedTrajectory(deepcopy(traj.datavec), traj, gdata=deepcopy(traj.gdata))
+    return NamedTrajectory(deepcopy(traj.datavec), traj, global_data=deepcopy(traj.global_data))
 end
 
 # -------------------------------------------------------------- #
@@ -98,9 +98,9 @@ function Base.getproperty(traj::NamedTrajectory, symb::Symbol)
     elseif symb in traj.names
         indices = traj.components[symb]
         return view(traj.data, indices, :)
-    elseif symb in traj.gnames
-        indices = traj.gcomponents[symb]
-        return view(traj.gdata, indices)
+    elseif symb in traj.global_names
+        indices = traj.global_components[symb]
+        return view(traj.global_data, indices)
     end
 end
 
@@ -139,11 +139,11 @@ function Base.isequal(traj1::NamedTrajectory, traj2::NamedTrajectory)
     end
 
     # check global components
-    if !issetequal(traj1.gnames, traj2.gnames)
+    if !issetequal(traj1.global_names, traj2.global_names)
         return false
     end
 
-    for gname in traj1.gnames
+    for gname in traj1.global_names
         if !isequal(traj1[gname], traj2[gname])
             return false
         end
@@ -198,11 +198,11 @@ end
 
    traj1 = NamedTrajectory(
         data, (x = 1:3, y=4:4, z=5:5), timestep=:z,
-        gdata=[1.0, 2.0, 3.0], gcomponents=(a=1:2, b=3:3)
+        global_data=[1.0, 2.0, 3.0], global_components=(a=1:2, b=3:3)
     )
     traj2 = NamedTrajectory(
         data, (x = 1:3, y=4:4, z=5:5), timestep=:z,
-        gdata=[3.0, 1.0, 2.0], gcomponents=(a=2:3, b=1:1)
+        global_data=[3.0, 1.0, 2.0], global_components=(a=2:3, b=1:1)
     )
     @test traj1 == traj2
 end
@@ -211,20 +211,20 @@ end
     using Random
     data1 = randn(5, 10)
     data2 = copy(data1)
-    gdata1 = [1.0, 2.0, 3.0]
-    gdata2 = copy(gdata1)
+    global_data1 = [1.0, 2.0, 3.0]
+    global_data2 = copy(global_data1)
     traj1 = NamedTrajectory(
         data1, (x = 1:3, y=4:4, z=5:5), timestep=:z,
-        gdata=gdata1, gcomponents=(a=1:2, b=3:3)
+        global_data=global_data1, global_components=(a=1:2, b=3:3)
     )
     traj2 = copy(traj1)
     traj1.data .= 0
     @test traj1.data == zeros(size(data1))
     @test traj2.data == data2
     
-    traj1.gdata .= 0
-    @test traj1.gdata == zeros(size(gdata1))
-    @test traj2.gdata == gdata2
+    traj1.global_data .= 0
+    @test traj1.global_data == zeros(size(global_data1))
+    @test traj2.global_data == global_data2
 
 end
 

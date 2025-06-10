@@ -20,7 +20,7 @@ traj.names
 
 # Add a new state variable `y` to the trajectory. Notice this is in-place.
 y_data = rand(4, 5)
-add_component!(traj, :y, y_data)
+traj = add_component(traj, :y, y_data)
 traj.names
 
 # Remove the state variable `y` from the trajectory. This is not in place.

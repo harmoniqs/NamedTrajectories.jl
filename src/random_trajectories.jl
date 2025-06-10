@@ -37,10 +37,7 @@ function Base.rand(
         timestep => fill(timestep_value, 1, T)
     )
 
-    return NamedTrajectory(
-        comps_data, NamedTuple(); 
-        timestep=timestep, controls=(control, timestep)
-    )
+    return NamedTrajectory(comps_data;  timestep=timestep, controls=(control, timestep))
 end
 
 # =========================================================================== #

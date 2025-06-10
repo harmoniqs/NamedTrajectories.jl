@@ -36,7 +36,7 @@ mutable struct NamedTrajectory{
     BNames, BTypes <: Tuple{Vararg{BoundType}},
     INames, ITypes <: Tuple,
     FNames, FTypes <: Tuple,
-    GNames, GTypes <: Tuple,
+    global_names, GTypes <: Tuple,
     CNames, CTypes <: ComponentType,
     N <: Tuple{Vararg{Symbol}},
     SN <: Tuple{Vararg{Symbol}},
@@ -53,16 +53,16 @@ mutable struct NamedTrajectory{
     bounds::NamedTuple{BNames, BTypes}
     initial::NamedTuple{INames, ITypes}
     final::NamedTuple{FNames, FTypes}
-    goal::NamedTuple{GNames, GTypes}
+    goal::NamedTuple{global_names, GTypes}
     components::NamedTuple{CNames, CTypes}
     names::N
     state_names::SN
     control_names::CN
-    gdata::Vector{R}
-    gdim::Int
-    gdims::NamedTuple{GDNames, GDTypes}
-    gcomponents::NamedTuple{GCNames, GCTypes}
-    gnames::GN
+    global_data::Vector{R}
+    global_dim::Int
+    global_dims::NamedTuple{GDNames, GDTypes}
+    global_components::NamedTuple{GCNames, GCTypes}
+    global_names::GN
 end
 
 """
@@ -80,11 +80,11 @@ function NamedTrajectory(
     initial=NamedTuple(),
     final=NamedTuple(),
     goal=NamedTuple(),
-    gdata::AbstractVector{R}=R[],
-    gcomponents::NamedTuple{GN, <:ComponentType} where GN=NamedTuple(),
+    global_data::AbstractVector{R}=R[],
+    global_components::NamedTuple{GN, <:ComponentType} where GN=NamedTuple(),
 ) where R <: Real
     @assert :data ∉ keys(comps) "data is a reserved name"
-    @assert isdisjoint(keys(comps), keys(gcomponents)) "components and global components should use unique names"
+    @assert isdisjoint(keys(comps), keys(global_components)) "components and global components should use unique names"
 
     @assert timestep isa Symbol && timestep ∈ keys(comps) "Missing timestep in components"
 
@@ -114,12 +114,12 @@ function NamedTrajectory(
     inspect_dims_pairs(dims_pairs, bounds, initial, final, goal)
 
     # global data 
-    gdim = length(gdata)
-    gdims = NamedTuple([(k => length(v)) for (k, v) ∈ pairs(gcomponents)])
-    gnames = Tuple(keys(gcomponents))
+    global_dim = length(global_data)
+    global_dims = NamedTuple([(k => length(v)) for (k, v) ∈ pairs(global_components)])
+    global_names = Tuple(keys(global_components))
 
     # check global data
-    @assert gdim == sum(values(gdims), init=0) "invalid global data dims"
+    @assert global_dim == sum(values(global_dims), init=0) "invalid global data dims"
 
     return NamedTrajectory(
         datavec,
@@ -135,16 +135,16 @@ function NamedTrajectory(
         names,
         states,
         controls,
-        gdata,
-        gdim,
-        gdims,
-        gcomponents,
-        gnames
+        global_data,
+        global_dim,
+        global_dims,
+        global_components,
+        global_names
     )
 end
 
 """
-    NamedTrajectory(component_data, gcomponents_data)
+    NamedTrajectory(component_data, global_components_data)
 
 Construct a `NamedTrajectory` from component data and global component data
 """
@@ -167,14 +167,14 @@ function NamedTrajectory(
     comps = NamedTuple(comps_pairs)
 
     # unpack global data
-    gdata = vcat([val for (key, val) ∈ pairs(gcomps_data)]...)
+    global_data = vcat([val for (key, val) ∈ pairs(gcomps_data)]...)
 
     # save global componets
     if !isempty(gcomps_data)
-        gdims_pairs = [(k => length(v)) for (k, v) ∈ pairs(gcomps_data)]
-        gcomps_pairs = [(gdims_pairs[1][1] => 1:gdims_pairs[1][2])]
-        for (k, v) ∈ gdims_pairs[2:end]
-            # offset within gdata
+        global_dims_pairs = [(k => length(v)) for (k, v) ∈ pairs(gcomps_data)]
+        gcomps_pairs = [(global_dims_pairs[1][1] => 1:global_dims_pairs[1][2])]
+        for (k, v) ∈ global_dims_pairs[2:end]
+            # offset within global_data
             k_value = gcomps_pairs[end][2][end] .+ (1:v)
             push!(gcomps_pairs, k => k_value)
         end
@@ -182,7 +182,7 @@ function NamedTrajectory(
 
         return NamedTrajectory(
             vec(data), comps, T; 
-            gdata=gdata, gcomponents=gcomps, kwargs...
+            global_data=global_data, global_components=gcomps, kwargs...
         )
     else
         return NamedTrajectory(vec(data), comps, T; kwargs...)
@@ -236,11 +236,11 @@ function NamedTrajectory(
     initial=traj.initial,
     final=traj.final,
     goal=traj.goal,
-    gdata::AbstractVector{R}=traj.gdata,
-    gcomponents::NamedTuple{GN, <:ComponentType} where GN=traj.gcomponents,
+    global_data::AbstractVector{R}=traj.global_data,
+    global_components::NamedTuple{GN, <:ComponentType} where GN=traj.global_components,
 ) where R <: Real
     @assert length(datavec) == sum(length.(values(components)), init=0) * T "Data vector length does not match components * T"
-    @assert length(gdata) == sum(length.(values(gcomponents)), init=0) "Global data length does not match global components"
+    @assert length(global_data) == sum(length.(values(global_components)), init=0) "Global data length does not match global components"
 
     return NamedTrajectory(
         datavec,
@@ -252,8 +252,8 @@ function NamedTrajectory(
         initial=initial,
         final=final,
         goal=goal,
-        gdata=gdata,
-        gcomponents=gcomponents,
+        global_data=global_data,
+        global_components=global_components,
     )
 end
 
@@ -406,7 +406,7 @@ end
     control = :u
 
     # some global params as a NamedTuple
-    gdim = 2
+    global_dim = 2
     gcomps_data = (
         α = rand(1),
         β = rand(1)
@@ -423,16 +423,16 @@ end
 
     @test traj.T == T
     @test traj.dim == dim
-    @test length(traj.gdata) == gdim
+    @test length(traj.global_data) == global_dim
     @test traj.names == (:x, :u, :Δt)
     @test traj.state_names == (:x,)
     @test traj.control_names == (:u, :Δt)
-    @test traj.gnames == (:α, :β)
+    @test traj.global_names == (:α, :β)
 
     comps_res = NamedTuple([(k => traj.data[v, :]) for (k, v) in pairs(traj.components)])
     @test comps_res == comps_data
 
-    gres = NamedTuple([(k => traj.gdata[v]) for (k, v) in pairs(traj.gcomponents)])
+    gres = NamedTuple([(k => traj.global_data[v]) for (k, v) in pairs(traj.global_components)])
     @test gres == gcomps_data
 
     # ignore global
@@ -444,12 +444,12 @@ end
     @test traj.names == (:x, :u, :Δt)
     @test traj.state_names == (:x,)
     @test traj.control_names == (:u, :Δt)
-    @test isempty(traj.gnames)
+    @test isempty(traj.global_names)
 
     comps_res = NamedTuple([(k => traj.data[v, :]) for (k, v) in pairs(traj.components)]) 
     @test comps_res == comps_data
 
-    @test isempty(traj.gdata)
+    @test isempty(traj.global_data)
 end
 
 @testitem "Test bounds" begin

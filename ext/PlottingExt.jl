@@ -217,7 +217,7 @@ function Makie.plot(
     # transformation keyword arguments
     # ---------------------------------------------------------------------------
 
-    # transformations, e.g. [(:x => x -> [x[1]; x[2]]), ...]
+    # transformations, e.g., [(:x => x -> [x[1]; abs(x[2])]), ...]
     transformations::AbstractVector{<:Pair{Symbol, <:AbstractTransform}} = Pair{Symbol, Function}[],
 
     # labels for transformed components
