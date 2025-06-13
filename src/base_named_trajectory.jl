@@ -7,10 +7,17 @@ using ..StructKnotPoint
 
 
 function Base.show(io::IO, Z::NamedTrajectory)
+    @inline function format(name, inds)
+        str = name == Z.timestep ? "→ " * String(name) : String(name)
+        return "$(str) = $(inds)"
+    end
+
+    comp_str = join([format(n, Z.components[n]) for n in keys(Z.components)], ", ")
     if isempty(Z.global_data)
-        print(io, Z.components, ", T = ", Z.T)
+        print(io, "T = ", Z.T, ", (", comp_str, ")")
     else
-        print(io, Z.components, ", T = ", Z.T, ", ", Z.global_components)
+        global_comp_str = join([format(n, Z.global_components[n]) for n in keys(Z.global_components)], ", ")
+        print(io, "T = ", Z.T, ", (", comp_str, "), (", global_comp_str, ")")
     end
 end
 

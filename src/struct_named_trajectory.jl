@@ -1,49 +1,58 @@
 module StructNamedTrajectory
 
 export NamedTrajectory
-export BoundType
 
 using OrderedCollections
 using TestItems
 
+# ---------------------------------------------------------------------------- #
+# Types for NamedTrajectory
+# ---------------------------------------------------------------------------- #
+
 const DimType = Tuple{Vararg{Int}}
-const BoundType = Tuple{AbstractVector{<:Real}, AbstractVector{<:Real}}
+
+const NameType = Tuple{Vararg{Symbol}}
 
 # UnitRange{Int} enforces nonallocating @views with indexing
 const ComponentType = Tuple{Vararg{UnitRange{Int}}}
 
-# TODO: Types and check on R <: Real for initial, final, goal
+const DataType{R <: Real} = Tuple{Vararg{R⃗}} where R⃗ <: AbstractVector{R}
+
+# Bound type is the type stored by the trajectory
+const BoundType{R <: Real} = Tuple{Vararg{Tuple{R⃗, R⃗}}} where R⃗ <: AbstractVector{R}
+
+# Allowed bounds at construction (elements of `bounds` NamedTuple)
+const ScalarBound = Union{R, Tuple{R, R}} where R <: Real
+const VectorBound = Union{R⃗, Tuple{R⃗, R⃗}} where R⃗ <: AbstractVector{<:Real}
+const AbstractBound = Union{ScalarBound, VectorBound}
 
 # ---------------------------------------------------------------------------- #
 # Named Trajectory
 # ---------------------------------------------------------------------------- #
 
 """
-    NamedTrajectory
+    NamedTrajectory{R <: Real}
 
-Container for trajectory optimization problems, which includes the trajectory data, bounds,
-dimensions, initial and final conditions, goal states, and components.
+Container for trajectory optimization problems, which includes the trajectory data, bounds dimensions, initial and final conditions, goal states, and components.
 
-This struct is designed to hold trajectory data in a named format, allowing for easy access 
-to knot points by `Symbol`.
+This struct is designed to hold trajectory data in a named format, allowing for easy access to knot points by `Symbol`.
 
-NamedTrajectory is designed to make allocation-free access easy to write. The data
-can be updated after construction, but the fields cannot.
+NamedTrajectory is designed to make allocation-free access easy to write. The data can be updated after construction, but the fields cannot.
 """
 mutable struct NamedTrajectory{
     R <: Real,
     DNames, DTypes <: DimType,
-    BNames, BTypes <: Tuple{Vararg{BoundType}},
-    INames, ITypes <: Tuple,
-    FNames, FTypes <: Tuple,
-    global_names, GTypes <: Tuple,
+    BNames, BTypes <: BoundType{R},
+    INames, ITypes <: DataType{R},
+    FNames, FTypes <: DataType{R},
+    global_names, GTypes <: DataType{R},
     CNames, CTypes <: ComponentType,
-    N <: Tuple{Vararg{Symbol}},
-    SN <: Tuple{Vararg{Symbol}},
-    CN <: Tuple{Vararg{Symbol}},
+    N <: NameType,
+    SN <: NameType,
+    CN <: NameType,
     GDNames, GDTypes <: DimType,
     GCNames, GCTypes <: ComponentType,
-    GN <: Tuple{Vararg{Symbol}},
+    GN <: NameType,
 }
     datavec::Vector{R}
     T::Int
@@ -75,7 +84,7 @@ function NamedTrajectory(
     comps::NamedTuple{N, <:ComponentType} where N,
     T::Int;
     timestep::Symbol=:Δt,
-    controls::Union{Symbol, Tuple{Vararg{Symbol}}}=timestep,
+    controls::Union{Symbol, NameType}=timestep,
     bounds=NamedTuple(),
     initial=NamedTuple(),
     final=NamedTuple(),
@@ -231,7 +240,7 @@ function NamedTrajectory(
     components::NamedTuple{N, <:ComponentType} where N=traj.components,
     T::Int=traj.T,
     timestep::Symbol=traj.timestep,
-    controls::Union{Symbol, Tuple{Vararg{Symbol}}}=traj.control_names,
+    controls::Union{Symbol, NameType}=traj.control_names,
     bounds=traj.bounds,
     initial=traj.initial,
     final=traj.final,
@@ -283,10 +292,10 @@ Process `bounds` from allowed types using `dims` and convert to `dtype`.
 """
 function get_bounds_from_dims(
     bounds::NamedTuple,
-    dims::NamedTuple{N, <:Tuple{Vararg{Int}}} where N;
+    dims::NamedTuple{<:Any, <:DimType};
     dtype=Float64
 )   
-    bounds_dict = OrderedDict{Symbol,Any}(pairs(bounds))
+    bounds_dict = OrderedDict{Symbol, AbstractBound}(pairs(bounds))
     for (name, bound) ∈ bounds_dict
         bdim = dims[name]
         if bound isa Real
@@ -317,12 +326,12 @@ end
 Check for missing names in the trajectory components.
 """
 function inspect_names(
-    names::Tuple{Vararg{Symbol}},
-    controls::Tuple{Vararg{Symbol}},
-    initial::Tuple{Vararg{Symbol}},
-    final::Tuple{Vararg{Symbol}},
-    goal::Tuple{Vararg{Symbol}},
-    bounds::Tuple{Vararg{Symbol}},
+    names::NameType,
+    controls::NameType,
+    initial::NameType,
+    final::NameType,
+    goal::NameType,
+    bounds::NameType,
 )
     for k ∈ controls
         @assert k ∈ names "Control $k not in component_data"
