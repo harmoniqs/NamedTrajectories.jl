@@ -117,7 +117,7 @@ function NamedTrajectory(
     dims = NamedTuple(dims_pairs)
 
     # process and save bounds
-    bounds = get_bounds_from_dims(bounds, dims)
+    bounds = get_bounds_from_dims(bounds, dims, dtype=R)
 
     # check data
     inspect_dims_pairs(dims_pairs, bounds, initial, final, goal)
@@ -297,6 +297,8 @@ function get_bounds_from_dims(
 )   
     bounds_dict = OrderedDict{Symbol, AbstractBound}(pairs(bounds))
     for (name, bound) ∈ bounds_dict
+        @assert bound isa AbstractBound
+
         bdim = dims[name]
         if bound isa Real
             vbound = fill(convert(dtype, bound), bdim)
@@ -308,13 +310,19 @@ function get_bounds_from_dims(
             )
         elseif bound isa AbstractVector{<:Real}
             if length(bound) != bdim 
-                throw(ArgumentError("Bound $name has wrong length: $(length(bound)) != $bdim"))
+                throw(ArgumentError("Invalid bound $name: $(length(bound)) != $bdim"))
             end
             bounds_dict[name] = (-convert.(dtype, bound), convert.(dtype, bound))
         elseif bound isa BoundType
+            if length(bound[1]) != bdim 
+                throw(ArgumentError("Invalid bound $name: $(length(bound[1])) != $bdim"))
+            end
+            if length(bound[2]) != bdim 
+                throw(ArgumentError("Invalid bound $name: $(length(bound[2])) != $bdim"))
+            end
             bounds_dict[name] = (convert.(dtype, bound[1]), convert.(dtype, bound[2]))
         else
-            throw(ArgumentError("Invalid bound type for $name: $(typeof(bound))"))
+            throw(ArgumentError("Unimplemented bound type for $name: $(typeof(bound))"))
         end
     end
     return NamedTuple(bounds_dict)
