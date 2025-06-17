@@ -226,17 +226,17 @@ function NamedTrajectory(
     @assert all([v isa AbstractMatrix || v isa AbstractVector for v ∈ values(comps_data)])
     vals = [v isa AbstractVector ? reshape(v, 1, :) : v for v ∈ values(comps_data)]
     comps_data = NamedTuple([(k => v) for (k, v) ∈ zip(keys(comps_data), vals)])
-    return NamedTrajectory(comps_data, timestep; kwargs...)
+    return NamedTrajectory(comps_data; kwargs...)
 end
 
 """
     NamedTrajectory(data, traj)
 
-Construct a `NamedTrajectory` from a datavec and an existing `NamedTrajectory`.
+Construct a `NamedTrajectory` from an existing `NamedTrajectory`.
 """
 function NamedTrajectory(
-    datavec::AbstractVector{R},
     traj::NamedTrajectory;
+    datavec::AbstractVector{R}=traj.datavec,
     components::NamedTuple{N, <:ComponentType} where N=traj.components,
     T::Int=traj.T,
     timestep::Symbol=traj.timestep,
@@ -313,7 +313,7 @@ function get_bounds_from_dims(
                 throw(ArgumentError("Invalid bound $name: $(length(bound)) != $bdim"))
             end
             bounds_dict[name] = (-convert.(dtype, bound), convert.(dtype, bound))
-        elseif bound isa BoundType
+        elseif bound isa Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}}
             if length(bound[1]) != bdim 
                 throw(ArgumentError("Invalid bound $name: $(length(bound[1])) != $bdim"))
             end
@@ -365,10 +365,10 @@ Check for proper formatting of trajectory components.
 """
 function inspect_dims_pairs(
     dims_pairs::Vector{Pair{Symbol, Int}},
-    bounds::NamedTuple{bname, <:Tuple{Vararg{BoundType}}} where bname,
-    initial::NamedTuple{iname, <:Tuple{Vararg{AbstractVector{R}}}} where iname,
-    final::NamedTuple{fname, <:Tuple{Vararg{AbstractVector{R}}}} where fname,
-    goal::NamedTuple{gname, <:Tuple{Vararg{AbstractVector{R}}}} where gname
+    bounds::NamedTuple{bname, <:BoundType{R}} where bname,
+    initial::NamedTuple{iname, <:DataType{R}} where iname,
+    final::NamedTuple{fname, <:DataType{R}} where fname,
+    goal::NamedTuple{gname, <:DataType{R}} where gname
 ) where R <: Real
     dims_tuple = NamedTuple(dims_pairs)
     for k in keys(bounds)

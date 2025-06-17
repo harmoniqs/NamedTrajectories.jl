@@ -170,11 +170,9 @@ function add_components(
         end
         gcomps = merge(traj.global_components, gcomps_pairs)
 
-        println(typeof(global_data))
-
         return NamedTrajectory(
-            traj.datavec,
             traj; 
+            datavec=traj.datavec,
             global_data=global_data, 
             global_components=gcomps,
             kwargs...
@@ -205,8 +203,8 @@ function add_components(
         datavec = extend_datavec(traj.data, vcat(values(comps_data)...))
 
         return NamedTrajectory(
-            datavec,
             traj;
+            datavec=datavec,
             components=comps,
             controls=controls,
             kwargs...

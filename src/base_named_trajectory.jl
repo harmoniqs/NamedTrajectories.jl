@@ -1,6 +1,7 @@
 module BaseNamedTrajectory
 
 using TestItems
+using LazyArrays
 
 using ..StructNamedTrajectory
 using ..StructKnotPoint
@@ -29,6 +30,15 @@ function Base.length(Z::NamedTrajectory)
 end
 
 """
+    vec(Z::NamedTrajectory) = vcat(Z.datavec, Z.global_data)
+
+"""
+function Base.vec(Z::NamedTrajectory)
+    # Allocation-free concatenation with LazyArrays
+    return ApplyArray(vcat, Z.datavec, Z.global_data)
+end
+
+"""
     size(Z::NamedTrajectory) = (dim = Z.dim, T = Z.T, global_dim = Z.global_dim)
 """
 Base.size(Z::NamedTrajectory) = (dim = Z.dim, T = Z.T, global_dim = Z.global_dim)
@@ -36,10 +46,29 @@ Base.size(Z::NamedTrajectory) = (dim = Z.dim, T = Z.T, global_dim = Z.global_dim
 """
     copy(::NamedTrajectory)
 
-Returns a copy of the trajectory data and global data.
+Returns a shallow copy of the trajectory.
 """
 function Base.copy(traj::NamedTrajectory)
-    return NamedTrajectory(deepcopy(traj.datavec), traj, global_data=deepcopy(traj.global_data))
+    NamedTrajectory(
+        traj.datavec,
+        traj.T,
+        traj.timestep,
+        traj.dim,
+        traj.dims,
+        traj.bounds,
+        traj.initial,
+        traj.final,
+        traj.goal,
+        traj.components,
+        traj.names,
+        traj.state_names,
+        traj.control_names,
+        traj.global_data,
+        traj.global_dim,
+        traj.global_dims,
+        traj.global_components,
+        traj.global_names,
+    )
 end
 
 # -------------------------------------------------------------- #
@@ -173,25 +202,23 @@ end
 # -------------------------------------------------------------- #
 
 function Base.:*(α::Float64, traj::NamedTrajectory)
-    return NamedTrajectory(α * traj.datavec, traj)
+    return NamedTrajectory(traj, datavec = α * traj.datavec)
 end
 
-function Base.:*(traj::NamedTrajectory, α::Float64)
-    return NamedTrajectory(α * traj.datavec, traj)
-end
+Base.:*(traj::NamedTrajectory, α::Float64) = α * NamedTrajectory(traj)
 
 function Base.:+(traj1::NamedTrajectory, traj2::NamedTrajectory)
     @assert traj1.names == traj2.names
     @assert traj1.dim == traj2.dim
     @assert traj1.T == traj2.T
-    return NamedTrajectory(traj1.datavec + traj2.datavec, traj1)
+    return NamedTrajectory(traj1, datavec=traj1.datavec + traj2.datavec)
 end
 
 function Base.:-(traj1::NamedTrajectory, traj2::NamedTrajectory)
     @assert traj1.names == traj2.names
     @assert traj1.dim == traj2.dim
     @assert traj1.T == traj2.T
-    return NamedTrajectory(traj1.datavec - traj2.datavec, traj1)
+    return NamedTrajectory(traj1, datavec=traj1.datavec - traj2.datavec)
 end
 
 # =========================================================================== #
@@ -224,7 +251,7 @@ end
         data1, (x = 1:3, y=4:4, z=5:5), timestep=:z,
         global_data=global_data1, global_components=(a=1:2, b=3:3)
     )
-    traj2 = copy(traj1)
+    traj2 = deepcopy(traj1)
     traj1.data .= 0
     @test traj1.data == zeros(size(data1))
     @test traj2.data == data2
@@ -237,34 +264,56 @@ end
 
 @testitem "knot point methods" begin
     include("../test/test_utils.jl")
-    free_time_traj = get_free_time_traj()
+    traj = get_free_time_traj()
 
     # freetime
-    @test free_time_traj[1] isa KnotPoint
-    @test free_time_traj[1].x == free_time_traj.x[:, 1]
-    @test free_time_traj[end] isa KnotPoint
-    @test free_time_traj[end].x == free_time_traj.x[:, end]
-    @test free_time_traj[:x] == free_time_traj.x
-    @test free_time_traj.timestep isa Symbol
+    @test traj[1] isa KnotPoint
+    @test traj[1].x == traj.x[:, 1]
+    @test traj[end] isa KnotPoint
+    @test traj[end].x == traj.x[:, end]
+    @test traj[:x] == traj.x
+    @test traj.timestep isa Symbol
 end
 
 @testitem "algebraic methods" begin
     include("../test/test_utils.jl")
-    free_time_traj = get_free_time_traj()
-    free_time_traj2 = copy(free_time_traj)
+    traj = get_free_time_traj()
+    traj2 = copy(traj)
 
-    @test (free_time_traj + free_time_traj2).x == free_time_traj.x + free_time_traj2.x
-    @test (free_time_traj - free_time_traj2).x == free_time_traj.x - free_time_traj2.x
-    @test (2.0 * free_time_traj).x == (free_time_traj * 2.0).x == free_time_traj.x * 2.0
+    @test (traj + traj2).x == traj.x + traj2.x
+    @test (traj - traj2).x == traj.x - traj2.x
+    @test (2.0 * traj).x == (traj * 2.0).x == traj.x * 2.0
 end
 
 @testitem "copying and equality checks" begin
     include("../test/test_utils.jl")
-    free_time_traj = get_free_time_traj()
+    traj = get_free_time_traj()
 
-    free_time_traj_copy = copy(free_time_traj)
-    @test free_time_traj == free_time_traj_copy
+    free_time_traj_copy = copy(traj)
+    @test traj == free_time_traj_copy
 end
 
+@testitem "length named trajectory" begin
+    using Random
+    data = randn(5, 10)
+    global_data = [1.0, 2.0, 3.0]
+    traj = NamedTrajectory(
+        data, (x = 1:3, y=4:4, z=5:5), timestep=:z,
+        global_data=global_data, global_components=(a=1:2, b=3:3)
+    )
+    @test length(traj) == size(data, 1) * size(data, 2) + length(global_data)
+end
+
+@testitem "vec named trajectory" begin
+    using Random
+    data = randn(5, 10)
+    global_data = [1.0, 2.0, 3.0]
+    traj = NamedTrajectory(
+        data, (x = 1:3, y=4:4, z=5:5), timestep=:z,
+        global_data=global_data, global_components=(a=1:2, b=3:3)
+    )
+    
+    @test vec(traj) == vcat(traj.datavec, traj.global_data)
+end
 
 end
