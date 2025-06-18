@@ -165,10 +165,10 @@ traj.components
 The `NamedTrajectory` can be updated by accessing fields and replacing the data.
 
 
-We also have `update!` to update trajectory components, and  `update_bound!`, which allows you to pass in the same kinds of bounds available at construction (e.g., an `Int` or `Tuple`). The bound will get shaped to match the trajectory component dimensions just like at construction.These methods cannot be used to update non-existent bounds or components.
+We also have `update!` to update trajectory components, and  `update_bound!`, which allows you to pass in the same kinds of bounds available at construction (e.g., an `Int` or `Tuple`). The bound will get shaped to match the trajectory component dimensions just like at construction. These methods cannot be used to update non-existent bounds or components.
 
 For efficiency, a trajectory cannot add new data after it is constructed. However, we have convenience methods like `add_component` that build a new trajectory with added data.
 
 =#
 
-update_bound!(traj, :x, )
+update_bound!(traj, :x, 2.) # TODO: consider fleshing out this section with more examples of updating trajectory components, knot points, globals, bounds, etc.

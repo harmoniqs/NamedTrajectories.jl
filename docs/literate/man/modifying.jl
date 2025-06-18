@@ -74,8 +74,8 @@ original_traj.names
 conflicting_traj = rand(NamedTrajectory, 5)
 traj.names, conflicting_traj.names
 
-# In this case, keep the `u` data from the first trajectory and the `x` data from the second trajectory
-merged_traj = merge(traj, conflicting_traj; merge_names=(u=1, x=2,))
+# In this case, keep the `u` data from the first trajectory and the `x` data and timestep from the second trajectory
+merged_traj = merge(traj, conflicting_traj; merge_names=(u=1, x=2, Δt=2))
 println(merged_traj.u == traj.u, ", ", merged_traj.u == conflicting_traj.u)
 println(merged_traj.x == traj.x, ", ", merged_traj.x == conflicting_traj.x)
 
@@ -147,12 +147,6 @@ traj = rand(NamedTrajectory, 5)
 println(traj.datavec == traj.data[:])
 traj.datavec = rand(length(traj.datavec))
 println(traj.datavec == traj.data[:]) # the `data` field now points to a "backing store" that is no longer accessible via `traj.datavec`; this will lead to undefined behavior:
-
-# The following is likewise an "unsafe" operation (non-in-place modification of `data`, replacing a "view" of `datavec` with a "raw" matrix):
-traj = rand(NamedTrajectory, 5)
-println(traj.datavec == traj.data[:])
-traj.data = rand(size(traj.data)...)
-println(traj.datavec == traj.data[:]) # the `data` field no longer points to any "backing store", i.e. is independent of `traj.datavec`; this will lead to undefined behavior:
 
 # In general, reassigning the values of any of the fields of a trajectory may lead to undefined behavior:
 fieldnames(NamedTrajectory)

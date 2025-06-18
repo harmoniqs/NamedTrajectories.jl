@@ -61,9 +61,10 @@ traj = NamedTrajectory(
     (
         x=X,
         u=U,
-        v=V
+        v=V,
+        Δt=fill(Δt, T),
     );
-    timestep=Δt,
+    timestep=:Δt,
     controls=(:u, :v)
 )
 

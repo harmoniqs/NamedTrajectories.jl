@@ -16,7 +16,7 @@ components = (
 
 # we must specify a timestep and control variable for the trajectory.
 
-timestep = 0.1
+timestep = :Δt
 control = :u
 
 # some global params as a NamedTuple
@@ -26,4 +26,4 @@ params = (
 )
 
 # we can now create a `NamedTrajectory` object with parameters specification.
-traj = NamedTrajectory(components; timestep=timestep, controls=control, global_data=params)
+traj = NamedTrajectory(components, params; timestep=timestep, controls=control)
