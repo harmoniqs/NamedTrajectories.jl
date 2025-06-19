@@ -370,8 +370,7 @@ end
 function Base.merge(
     trajs::AbstractVector{<:NamedTrajectory};
     merge_names::NamedTuple{<:Any, <:Tuple{Vararg{Int}}}=NamedTuple(),
-    timestep::Symbol=trajs[end].timestep,
-    timesteps::AbstractVector{<:Real}=get_timesteps(trajs[end])
+    timestep::Symbol=trajs[end].timestep
 )
     if length(trajs) < 2
         throw(ArgumentError("At least two trajectories must be provided"))
@@ -398,9 +397,9 @@ function Base.merge(
     control_components = merge_outer([get_components(c, t) for (c, t) ∈ zip(control_names, trajs)])
     components = merge_outer(state_components, control_components)
  
-    # add timesteps
+    # ensure timestep is in components
     if timestep ∉ keys(components)
-        components = merge_outer(components, (; timestep => timesteps,))
+        throw(ArgumentError("Timestep '$timestep' not found in components."))
     end
 
     # merge global data
@@ -456,7 +455,7 @@ end
 function merge_outer(s1::AbstractVector, s2::AbstractVector)
     common_keys = intersect(s1, s2)
     if !isempty(common_keys)
-        error("Key collision detected: ", common_keys)
+        throw(ArgumentError("Key collision detected: $(common_keys)"))
     end
     return vcat(s1, s2)
 end
@@ -464,7 +463,7 @@ end
 function merge_outer(nt1::NamedTuple, nt2::NamedTuple)
     common_keys = intersect(keys(nt1), keys(nt2))
     if !isempty(common_keys)
-        error("Key collision detected: ", common_keys)
+        throw(ArgumentError("Key collision detected: $(common_keys)"))
     end
     return merge(nt1, nt2)
 end
@@ -542,7 +541,7 @@ function remove_suffix(s::String, suffix::String)
     if endswith(s, suffix)
         return chop(s, tail=length(suffix))
     else
-        error("Suffix '$suffix' not found at the end of '$s'")
+        throw(ArgumentError("Suffix '$suffix' not found at the end of '$s'"))
     end
 end
 
@@ -792,8 +791,26 @@ end
     @test traj4.timestep == :y
     @test issetequal(traj3.names, vcat(traj1.names..., traj2.names...))
 
-    # TODO: test merge_name collisions and indices
-    # TODO: test merge of vector of trajectories
+    # merge x, u, Δt
+    traj1 = rand(NamedTrajectory, T)
+    traj2 = rand(NamedTrajectory, T)
+    traj_merged = merge([traj1, traj2]; merge_names=(x=1, u=2, Δt=1), timestep=:Δt)
+    @test traj_merged.timestep == :Δt
+    @test issetequal(traj_merged.names, (:x, :u, :Δt))
+    @test traj_merged.x == traj1.x
+    @test traj_merged.u == traj2.u
+    @test traj_merged.Δt == traj1.Δt
+
+    # merge collision
+    @test_throws ArgumentError merge(traj1, traj2, merge_names=(x=1, u=1))
+
+    # cannot find timestep
+    @test_throws ArgumentError merge(traj1, traj2, merge_names=(x=1, u=1, Δt=1), timestep=:dt)
+
+    # merge vector
+    trajs = [rand(NamedTrajectory, T) for _ in 1:5]
+    trajs_merged = merge(trajs; merge_names=(x=1, u=2, Δt=1), timestep=:Δt)
+    @test trajs_merged isa NamedTrajectory
 end
 
 @testitem "returning times" begin
