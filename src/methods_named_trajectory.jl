@@ -370,6 +370,7 @@ end
 function Base.merge(
     trajs::AbstractVector{<:NamedTrajectory};
     merge_names::NamedTuple{<:Any, <:Tuple{Vararg{Int}}}=NamedTuple(),
+    exclude_names::AbstractVector{<:Symbol}=Symbol[],
     timestep::Symbol=trajs[end].timestep
 )
     if length(trajs) < 2
@@ -381,7 +382,9 @@ function Base.merge(
         if index < 1 || index > length(trajs) 
             throw(BoundsError(trajs, index))
         end
-        Symbol[name for (name, keep) ∈ pairs(merge_names) if keep != index]
+        vcat(
+            Symbol[name for (name, keep) ∈ pairs(merge_names) if keep != index], exclude_names
+        )
     end
 
     # collect component data
@@ -794,12 +797,12 @@ end
     # merge x, u, Δt
     traj1 = rand(NamedTrajectory, T)
     traj2 = rand(NamedTrajectory, T)
-    traj_merged = merge([traj1, traj2]; merge_names=(x=1, u=2, Δt=1), timestep=:Δt)
-    @test traj_merged.timestep == :Δt
-    @test issetequal(traj_merged.names, (:x, :u, :Δt))
-    @test traj_merged.x == traj1.x
-    @test traj_merged.u == traj2.u
-    @test traj_merged.Δt == traj1.Δt
+    trajs_merged = merge([traj1, traj2]; merge_names=(x=1, u=2, Δt=1), timestep=:Δt)
+    @test trajs_merged.timestep == :Δt
+    @test issetequal(trajs_merged.names, (:x, :u, :Δt))
+    @test trajs_merged.x == traj1.x
+    @test trajs_merged.u == traj2.u
+    @test trajs_merged.Δt == traj1.Δt
 
     # merge collision
     @test_throws ArgumentError merge(traj1, traj2, merge_names=(x=1, u=1))
@@ -811,6 +814,11 @@ end
     trajs = [rand(NamedTrajectory, T) for _ in 1:5]
     trajs_merged = merge(trajs; merge_names=(x=1, u=2, Δt=1), timestep=:Δt)
     @test trajs_merged isa NamedTrajectory
+
+    # merge with exclude
+    trajs_exclude = merge(trajs; merge_names=(u=2, Δt=1), exclude_names=[:x,])
+    @test trajs_exclude.timestep == :Δt
+    @test issetequal(trajs_exclude.names, (:u, :Δt))
 end
 
 @testitem "returning times" begin
