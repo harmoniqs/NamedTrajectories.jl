@@ -19,56 +19,26 @@ using NamedTrajectories
 ```math
 \qty{z_t = \mqty(x_t \\ u_t)}_{t=1:T}
 ```
+
+where $x_t$ is the state and $u_t$ is the control at a time indexed by $t$. Together $z_t$ is referred to as a *knot point* and a `NamedTrajectory` essentially just stores a collection of knot points and makes it easy to access the state and control variables.
+
+## Creating a variable-timestep `NamedTrajectory`
+
+Here we will create a `NamedTrajectory` with a variable timestep.
 =#
 
-# where $x_t$ is the state and $u_t$ is the control at a time indexed by $t$. Together $z_t$ is referred to as a *knot point* and a `NamedTrajectory` essentially just stores a collection of knot points and makes it easy to access the state and control variables.
-
-
-# ## Creating a fixed-timestep `NamedTrajectory`
-
-# Here we will createa a `NamedTrajectory` with a fixed timestep. This is done by passing a scalar as the `timestep` kwarg.
-
 ## define the number of timesteps
 T = 10
+Δt = 0.1
 
 ## define the knot point data as a NamedTuple of matrices
 data = (
     x = rand(3, T),
     u = rand(2, T),
+    Δt = fill(Δt, T),
 )
 
-## we must specify a timestep and control variable for the trajectory
-timestep = 0.1
-control = :u
-
-## we can now create a `NamedTrajectory` object
-traj = NamedTrajectory(data; timestep=timestep, controls=control)
-
-## we can return the names of the stored variables
-traj.names
-
-# Let's plot this trajectory
-# Use a Makie backend to automatically load the NamedTrajectories plotting extension
-using CairoMakie
-
-plot(traj)
-
-
-# ## Creating a variable-timestep `NamedTrajectory`
-
-# Here we will create a `NamedTrajectory` with a variable timestep. This is done by passing a `Symbol`, corresponding to component of the data, as the `timestep` kwarg.
-
-## define the number of timesteps
-T = 10
-
-## define the knot point data as a NamedTuple of matrices
-data = (
-    x = rand(3, T),
-    u = rand(2, T),
-    Δt = rand(T),
-)
-
-## we must specify a timestep and control variable for the NamedTrajectory
+## we must specify a timestep and control variable for the NamedTrajectory.
 timestep = :Δt
 control = :u
 
@@ -79,9 +49,11 @@ traj = NamedTrajectory(data; timestep=timestep, controls=control)
 traj.names
 
 
-# ## Adding more problem data
+#=
+## Adding more problem data
 
-# In many settings we will want to add problem data to our `NamedTrajectory` -- e.g. bounds, initial values, final values, and goal values. This is realized by passing NamedTuples containing this data.
+In many settings we will want to specify the problem data of our `NamedTrajectory` -- e.g. bounds, initial values, final values, and goal values. 
+=#
 
 ## define the number of timesteps
 T = 10
@@ -131,7 +103,7 @@ traj = NamedTrajectory(
 )
 
 ## we can then show the bounds
-traj.goal
+traj.bounds
 
 
 # ## Retrieving data
@@ -186,3 +158,17 @@ traj.T
 traj.components
 
 # returns the components of the trajectory.
+
+#=
+## Updating problem data
+
+The `NamedTrajectory` can be updated by accessing fields and replacing the data.
+
+
+We also have `update!` to update trajectory components, and  `update_bound!`, which allows you to pass in the same kinds of bounds available at construction (e.g., an `Int` or `Tuple`). The bound will get shaped to match the trajectory component dimensions just like at construction. These methods cannot be used to update non-existent bounds or components.
+
+For efficiency, a trajectory cannot add new data after it is constructed. However, we have convenience methods like `add_component` that build a new trajectory with added data.
+
+=#
+
+update_bound!(traj, :x, 2.) # TODO: consider fleshing out this section with more examples of updating trajectory components, knot points, globals, bounds, etc.

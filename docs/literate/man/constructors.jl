@@ -18,7 +18,7 @@ components = (
 
 # we must specify a timestep and control variable for the trajectory.
 
-timestep = 0.1
+timestep = :Δt
 control = :u
 
 # we can now create a `NamedTrajectory` object.
@@ -27,4 +27,6 @@ traj = NamedTrajectory(components; timestep=timestep, controls=control)
 
 # Construct `NamedTrajectory` from previous constructed one.
 
-traj = NamedTrajectory(components, traj)
+# `traj = NamedTrajectory(components, traj) # TODO: should this constructor be reimplemented for v0.4.0?`
+
+traj = NamedTrajectory(traj; components=(x=1:3, u=4:5, Δt=6:6))

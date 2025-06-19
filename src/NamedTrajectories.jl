@@ -10,6 +10,9 @@ include("struct_named_trajectory.jl")
 include("struct_knot_point.jl")
 @reexport using .StructKnotPoint
 
+include("base_named_trajectory.jl")
+@reexport using .BaseNamedTrajectory
+
 include("methods_named_trajectory.jl")
 @reexport using .MethodsNamedTrajectory
 

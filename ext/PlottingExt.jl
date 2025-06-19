@@ -3,9 +3,7 @@ module PlottingExt
 using NamedTrajectories
 import NamedTrajectories: namedplot, namedplot!
 
-# Ideally, we'd only need MakieCore for recipes
-# But, we need Series, Axis, Figure etc. 
-# And it's recommended to use Makie for ext
+# recommended to use Makie for ext
 using Makie
 
 using TestItems
@@ -49,6 +47,11 @@ function Makie.convert_arguments(
         end
     else
         transform_data = traj[name]
+    end
+
+    # If 1D, convert to 2D
+    if transform_data isa AbstractVector
+        transform_data = reshape(transform_data, 1, :)
     end
 
     return Makie.convert_arguments(P, get_times(traj), transform_data)
@@ -214,7 +217,7 @@ function Makie.plot(
     # transformation keyword arguments
     # ---------------------------------------------------------------------------
 
-    # transformations, e.g. [(:x => x -> [x[1]; x[2]]), ...]
+    # transformations, e.g., [(:x => x -> [x[1]; abs(x[2])]), ...]
     transformations::AbstractVector{<:Pair{Symbol, <:AbstractTransform}} = Pair{Symbol, Function}[],
 
     # labels for transformed components
