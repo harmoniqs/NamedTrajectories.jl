@@ -5,7 +5,6 @@ import NamedTrajectories: namedplot, namedplot!
 
 # recommended to use Makie for ext
 using Makie
-
 using TestItems
 
 const AbstractTransform = Union{<:Function, AbstractVector{<:Function}}

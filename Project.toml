@@ -1,7 +1,7 @@
 name = "NamedTrajectories"
 uuid = "538bc3a1-5ab9-4fc3-b776-35ca1e893e08"
 authors = ["Aaron Trowbridge <aaron.j.trowbridge@gmail.com> and contributors"]
-version = "0.4.0"
+version = "0.4.1"
 
 [deps]
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
@@ -13,12 +13,15 @@ TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [weakdeps]
+Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 
 [extensions]
+InterpolationsExt = ["Interpolations"]
 PlottingExt = ["Makie"]
 
 [compat]
+Interpolations = "0.15"  # Issue with Makie at 0.16
 JLD2 = "0.5"
 LazyArrays = "2.6"
 Makie = "0.21, 0.22"
@@ -33,4 +36,4 @@ CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["CairoMakie", "Test"]
+test = ["CairoMakie", "Interpolations", "Test"]
