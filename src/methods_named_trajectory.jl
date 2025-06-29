@@ -23,6 +23,9 @@ export add_suffix
 export remove_suffix
 export get_suffix
 
+# extensions 
+export trajectory_interpolation
+
 using TestItems
 
 using ..StructNamedTrajectory
@@ -154,6 +157,7 @@ function add_components(
     type::Symbol=:state,
     kwargs...
 )
+    # TODO: multiple types in comps; shift of previous control to state
     if type == :global
         @assert all([c isa AbstractVector for c in values(comps_data)])
         @assert all([k ∉ keys(traj.global_components) for k in keys(comps_data)])
@@ -436,6 +440,8 @@ end
 
 drop(nt::NamedTuple, name::Symbol) = drop(nt, [name])
 
+drop(t::Tuple, drop_names::AbstractVector{Symbol}) = Tuple(k for k in t if k ∉ drop_names)
+
 """
     merge_outer(objs::AbstractVector{<:Any})
 
@@ -639,6 +645,12 @@ function get_suffix(
         goal=get_suffix(traj.goal, suffix, remove=remove)
     )
 end
+
+# -------------------------------------------------------------- #
+# Interpolations Ext
+# -------------------------------------------------------------- #
+
+function trajectory_interpolation end
 
 # =========================================================================== #
 

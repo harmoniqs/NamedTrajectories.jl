@@ -10,16 +10,12 @@ using ..StructNamedTrajectory
         T::Int;
         timestep_value::Float64=1.0,
         timestep_name::Symbol=:Δt,
-        free_time::Bool=false,
         timestep::Union{Float64,Symbol}=free_time ? timestep_name : timestep_value,
         state_dim::Int=3,
         control_dim::Int=2
     )
 
-Create a random `NamedTrajectory` with `T` time steps, a state variable `x` of dimension 
-`state_dim`, and a control variable `u` of dimension `control_dim`. If `free_time` is 
-`true`, the time step is a symbol `timestep_name` and the time step value is 
-`timestep_value`. Otherwise, the time step is a number `timestep_value`.
+Create a random `NamedTrajectory` with `T` time steps, a state variable `x` of dimension  `state_dim`, and a control variable `u` of dimension `control_dim`. The time step is a symbol `timestep_name` and the time step value is `timestep_value`. 
 """
 function Base.rand(
     ::Type{NamedTrajectory},
