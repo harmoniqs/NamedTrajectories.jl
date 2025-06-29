@@ -1,76 +1,163 @@
 module InterpolationsExt
 
 using NamedTrajectories
-using Interpolations
+using NamedTrajectories.MethodsNamedTrajectory: drop
+using DataInterpolations
 using TestItems
 
 
-# This checks compatability with Interpolations
-
-function trajectory_interpolation(
-    times::AbstractVector,
+function NamedTrajectories.trajectory_interpolation(
     traj::NamedTrajectory,
-    kind::Symbol;
-    kwargs...
+    times::AbstractVector;
+    interpolations::NamedTuple=NamedTuple(
+        zip(traj.names, fill(:linear, length(traj.names)))
+    ),
 )
-    new_data = zeros(eltype(traj.data), size(traj.data, 1), length(times))
-
-    for name in traj.names
-        # Set the timestep component using new times
-        if name == traj.timestep
-            # last timestep chosen to match the original trajectory
-            timesteps = vcat(diff(times), traj[traj.timestep][:, end])
-            new_data[traj.components[name], :] .= reshape(timesteps, 1, length(timesteps))
-        else
-            # interpolate all other components
-            vals = traj[name]
-            for (i, idx) in enumerate(traj.components[name])
-                itp = if kind == :linear
-                    linear_interpolation(get_times(traj), vals[i, :]; kwargs...)
-                elseif kind == :constant
-                    constant_interpolation(get_times(traj), vals[i, :]; kwargs...)
-                else
-                    throw(ValueError("Unsupported interpolation kind: $kind"))
-                end
-                new_data[idx, :] = itp(times)
-            end
-        end
+    if traj.timestep ∉ keys(interpolations)
+        interpolations = merge(interpolations, NamedTuple((traj.timestep => :linear,)))
     end
+
+    components = NamedTuple(
+        if traj.timestep == name 
+            traj.timestep => vcat(diff(times), traj[traj.timestep][:, end])
+        elseif kind == :constant
+            name => ConstantInterpolation(traj, name)(times)
+        elseif kind == :linear
+            name => LinearInterpolation(traj, name)(times)
+        elseif kind == :spline
+            name => CubicHermiteSpline(traj, name)(times)
+        else
+            throw(ArgumentError("Unsupported interpolation kind: $kind"))
+        end
+        for (name, kind) in pairs(interpolations)
+    )
+
+    # Drop components that are not in the names list
+    drop_names = setdiff(traj.names, keys(interpolations))
 
     # Build new trajectory with interpolated data and new times
     return NamedTrajectory(
-        vec(new_data),
-        traj.components,
-        length(times);
+        components;
         timestep=traj.timestep,
-        controls=traj.control_names,
-        bounds=traj.bounds,
-        initial=traj.initial,
-        final=traj.final,
-        goal=traj.goal,
+        controls=drop(traj.control_names, drop_names),
+        bounds=drop(traj.bounds, drop_names),
+        initial=drop(traj.initial, drop_names),
+        final=drop(traj.final, drop_names),
+        goal=drop(traj.goal, drop_names),
         global_data=traj.global_data,
         global_components=traj.global_components
     )
 end
 
-function trajectory_interpolation(T::Int, traj::NamedTrajectory, kind::Symbol; kwargs...)
+function NamedTrajectories.trajectory_interpolation(
+    traj::NamedTrajectory,
+    T::Int;
+    kwargs...
+)
     prev_times = get_times(traj)
     new_times = range(prev_times[1], prev_times[end], length=T)
-    return trajectory_interpolation(new_times, traj, kind; kwargs...)
+    return trajectory_interpolation(traj, new_times; kwargs...)
 end
 
-function Interpolations.linear_interpolation(times, traj::NamedTrajectory; kwargs...)
-    return trajectory_interpolation(times, traj, :linear; kwargs...)
+function DataInterpolations.ConstantInterpolation(
+    traj::NamedTrajectory, x::Symbol; kwargs...
+)
+    @assert x ∈ traj.names "Component $x not found in trajectory names."
+    return ConstantInterpolation(traj[x], get_times(traj); kwargs...)
 end
 
-function Interpolations.constant_interpolation(times, traj::NamedTrajectory; kwargs...)
-    return trajectory_interpolation(times, traj, :constant; kwargs...)
+function DataInterpolations.LinearInterpolation(
+    traj::NamedTrajectory, x::Symbol; kwargs...
+)
+    @assert x ∈ traj.names "Component $x not found in trajectory names."
+    return LinearInterpolation(traj[x], get_times(traj); kwargs...)
+end
+
+function DataInterpolations.CubicHermiteSpline(
+    traj::NamedTrajectory, dx::Symbol, x::Symbol; kwargs...
+)
+    @assert x ∈ traj.names "Component $x not found in trajectory names."
+    @assert dx ∈ traj.names "Derivative component $dx not found in trajectory names."
+    return CubicHermiteSpline(traj[dx], traj[x], get_times(traj); kwargs...)
+end
+
+function DataInterpolations.CubicHermiteSpline(
+    traj::NamedTrajectory, x::Symbol; kwargs...
+)
+    dx = Symbol("d" * string(x))
+    return CubicHermiteSpline(traj, dx, x; kwargs...)
+end
+
+# --------------------------------------------------------------------------- #
+# Patches for DataInterpolations.jl
+# --------------------------------------------------------------------------- #
+
+# DataInterpolations.jl:src/parameter_caches.jl
+function DataInterpolations.cubic_hermite_spline_parameters(du::AbstractArray, u::AbstractArray, t, idx)
+    ax_u = axes(u)[1:end-1]
+    ax_du = axes(du)[1:end-1]
+    Δt = t[idx + 1] - t[idx]
+    u₀ = u[ax_u..., idx]
+    u₁ = u[ax_u..., idx + 1]
+    du₀ = du[ax_du..., idx]
+    du₁ = du[ax_du..., idx + 1]
+    c₁ = (u₁ - u₀ - du₀ * Δt) / Δt^2
+    c₂ = (du₁ - du₀ - 2c₁ * Δt) / Δt^2
+    return c₁, c₂
+end
+
+# DataInterpolations.jl:src/interpolation_methods.jl
+function DataInterpolations._interpolate(
+        A::CubicHermiteSpline{<:AbstractArray{<:Number}}, t::Number, iguess)
+    ax_u = axes(A.u)[1:end-1]
+    ax_du = axes(A.du)[1:end-1]
+    idx = DataInterpolations.get_idx(A, t, iguess)
+    Δt₀ = t - A.t[idx]
+    Δt₁ = t - A.t[idx + 1]
+    out = A.u[ax_u..., idx] + Δt₀ * A.du[ax_du..., idx]
+    c₁, c₂ = DataInterpolations.get_parameters(A, idx)
+    out += Δt₀^2 * (c₁ + Δt₁ * c₂)
+    out
 end
 
 # *************************************************************************** #
 
-@testitem "linear interpolation basic functionality" begin
-    using Interpolations: linear_interpolation
+@testitem "test interpolation types" begin
+    using DataInterpolations
+
+    T = 10
+    x_dim = 3
+    u_dim = 2
+    traj_init = rand(NamedTrajectory, T, control_dim=u_dim, state_dim=x_dim)
+    traj = add_component(traj_init, :du, rand(u_dim, T))
+
+    interp = ConstantInterpolation(traj, :x)
+    @test interp isa ConstantInterpolation
+    res = interp(2.0)
+    @test res isa Vector{Float64}
+    @test length(res) == x_dim
+
+    interp = LinearInterpolation(traj, :x)
+    @test interp isa LinearInterpolation
+    res = interp(2.0)
+    @test res isa Vector{Float64}
+    @test length(res) == x_dim
+
+    interp = CubicHermiteSpline(traj, :du, :u)
+    @test interp isa CubicHermiteSpline
+    res = interp(2.0)
+    @test res isa Vector{Float64}
+    @test length(res) == u_dim
+
+    interp = CubicHermiteSpline(traj, :u)
+    @test interp isa CubicHermiteSpline
+    res = interp(2.0)
+    @test res isa Vector{Float64}
+    @test length(res) == u_dim
+end
+
+@testitem "interpolation basic functionality" begin
+    using DataInterpolations
 
     # Create a simple test trajectory
     T = 10
@@ -81,7 +168,7 @@ end
     traj = NamedTrajectory(vec(data), comps, T; timestep=:Δt)
 
     new_times = collect(range(times[1], times[end], length=2T))
-    new_traj = linear_interpolation(new_times, traj)
+    new_traj = trajectory_interpolation(traj, new_times)
 
     @test size(new_traj.data, 2) == 2T
 
@@ -89,13 +176,13 @@ end
     @test new_traj[:Δt][1:end-1] ≈ diff(new_times)
 
     # Check that interpolating at original times gives back original data
-    orig_traj = linear_interpolation(times, traj)
+    orig_traj = trajectory_interpolation(traj, times)
     @test orig_traj[:x] ≈ traj[:x]
     @test orig_traj[:y] ≈ traj[:y]
 end
 
-@testitem "linear interpolation with constant data" begin
-    using Interpolations: linear_interpolation
+@testitem "interpolation with constant data" begin
+    using DataInterpolations
 
     # Create a constant test trajectory
     T = 10
@@ -107,7 +194,7 @@ end
 
     # Check that constant data is interpolated correctly
     new_times = collect(range(times[1], times[end], length=2T))
-    new_traj = linear_interpolation(new_times, traj)
+    new_traj = trajectory_interpolation(traj, new_times)
 
     @test size(new_traj.data, 2) == 2T
 

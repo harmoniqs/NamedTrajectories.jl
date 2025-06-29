@@ -13,15 +13,15 @@ TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [weakdeps]
-Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
+DataInterpolations = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 
 [extensions]
-InterpolationsExt = ["Interpolations"]
+InterpolationsExt = ["DataInterpolations"]
 PlottingExt = ["Makie"]
 
 [compat]
-Interpolations = "0.15"  # Issue with Makie at 0.16
+DataInterpolations = "8.1"
 JLD2 = "0.5"
 LazyArrays = "2.6"
 Makie = "0.21, 0.22"
@@ -36,4 +36,4 @@ CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["CairoMakie", "Interpolations", "Test"]
+test = ["CairoMakie", "DataInterpolations", "Test"]
