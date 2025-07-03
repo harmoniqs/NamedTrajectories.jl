@@ -197,14 +197,11 @@ Plot a `NamedTrajectory` using Makie.
 """
 function Makie.plot(
     traj::NamedTrajectory,
-    names::Union{AbstractVector{Symbol}, Tuple{Vararg{Symbol}}}=traj.names;
+    names::Union{AbstractVector{Symbol}, Tuple{Vararg{Symbol}}}=filter(x -> x != traj.timestep, traj.names);
 
     # ---------------------------------------------------------------------------
     # component specification keyword arguments
     # ---------------------------------------------------------------------------
-
-    # whether or not to plot the timestep componenent
-    ignore_timestep::Bool=true,
     
     # whether or not to include unique labels for components
     merge_labels::Union{Bool, AbstractVector{Bool}} = false,
@@ -246,10 +243,6 @@ function Makie.plot(
     # parse arguments
     if names isa Symbol
         names = [names]
-    end
-
-    if traj.timestep isa Symbol && ignore_timestep
-        names = filter(x -> x != traj.timestep, names)
     end
 
     if merge_labels isa Bool
