@@ -108,13 +108,11 @@ function NamedTrajectory(
     inspect_names(names, controls, keys(initial), keys(final), keys(goal), keys(bounds))
     states = Tuple(k for k ∈ names if k ∉ controls)
 
-    # save data matrix as view of datavec
-    data = reshape(view(datavec, :), :, T)
-    dim = size(data, 1)
-
     # save dims
     dims_pairs = [(k => length(v)) for (k, v) ∈ pairs(comps)]
     dims = NamedTuple(dims_pairs)
+    dim = sum(values(dims), init=0)
+    @assert dim * T == length(datavec) "Data vector length does not match components"
 
     # process and save bounds
     bounds = get_bounds_from_dims(bounds, dims, dtype=R)
