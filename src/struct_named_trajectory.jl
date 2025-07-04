@@ -108,13 +108,11 @@ function NamedTrajectory(
     inspect_names(names, controls, keys(initial), keys(final), keys(goal), keys(bounds))
     states = Tuple(k for k ∈ names if k ∉ controls)
 
-    # save data matrix as view of datavec
-    data = reshape(view(datavec, :), :, T)
-    dim = size(data, 1)
-
     # save dims
     dims_pairs = [(k => length(v)) for (k, v) ∈ pairs(comps)]
     dims = NamedTuple(dims_pairs)
+    dim = sum(values(dims), init=0)
+    @assert dim * T == length(datavec) "Data vector length does not match components"
 
     # process and save bounds
     bounds = get_bounds_from_dims(bounds, dims, dtype=R)
@@ -158,11 +156,11 @@ end
 Construct a `NamedTrajectory` from component data and global component data
 """
 function NamedTrajectory(
-    comps_data::NamedTuple{N, <:Tuple{Vararg{AbstractMatrix{R}}}} where N,
-    gcomps_data::NamedTuple{GN, <:Tuple{Vararg{AbstractVector{R}}}} where GN;
+    comps_data::NamedTuple{N, <:Tuple{Vararg{AbstractMatrix{<:Real}}}} where N,
+    gcomps_data::NamedTuple{GN, <:Tuple{Vararg{AbstractVector{<:Real}}}} where GN;
     kwargs...
-) where R <: Real
-    # unpack data
+)
+    # unpack data (promote type)
     data = vcat([val for (key, val) ∈ pairs(comps_data)]...)
     dim, T = size(data)
 
@@ -175,11 +173,9 @@ function NamedTrajectory(
     end
     comps = NamedTuple(comps_pairs)
 
-    # unpack global data
-    global_data = vcat([val for (key, val) ∈ pairs(gcomps_data)]...)
-
     # save global componets
     if !isempty(gcomps_data)
+        global_data = vcat([val for (key, val) ∈ pairs(gcomps_data)]...)
         global_dims_pairs = [(k => length(v)) for (k, v) ∈ pairs(gcomps_data)]
         gcomps_pairs = [(global_dims_pairs[1][1] => 1:global_dims_pairs[1][2])]
         for (k, v) ∈ global_dims_pairs[2:end]
@@ -188,12 +184,16 @@ function NamedTrajectory(
             push!(gcomps_pairs, k => k_value)
         end
         gcomps = NamedTuple(gcomps_pairs)
+        R = promote_type(eltype(data), eltype(global_data))
 
         return NamedTrajectory(
-            vec(data), comps, T; 
-            global_data=global_data, global_components=gcomps, kwargs...
+            vec(convert.(R, data)), comps, T; 
+            global_data=convert.(R, global_data), 
+            global_components=gcomps,
+            kwargs...
         )
     else
+        # user can specify global data using `global_data`, `global_components`
         return NamedTrajectory(vec(data), comps, T; kwargs...)
     end
 end
@@ -204,9 +204,9 @@ end
 Construct a `NamedTrajectory` from component data.
 """
 function NamedTrajectory(
-    comps_data::NamedTuple{N, <:Tuple{Vararg{AbstractMatrix{R}}}} where N;
+    comps_data::NamedTuple{N, <:Tuple{Vararg{AbstractMatrix{<:Real}}}} where N;
     kwargs...
-) where R <: Real
+)
     return NamedTrajectory(
         comps_data,
         NamedTuple();
@@ -220,10 +220,9 @@ end
 Construct a `NamedTrajectory` from mixed Matrix/Vector component data.
 """
 function NamedTrajectory(
-    comps_data::NamedTuple;
+    comps_data::NamedTuple{N, <:Tuple{Vararg{AbstractVecOrMat{<:Real}}}} where N; 
     kwargs...
-)
-    @assert all([v isa AbstractMatrix || v isa AbstractVector for v ∈ values(comps_data)])
+) # where R <: Real
     vals = [v isa AbstractVector ? reshape(v, 1, :) : v for v ∈ values(comps_data)]
     comps_data = NamedTuple([(k => v) for (k, v) ∈ zip(keys(comps_data), vals)])
     return NamedTrajectory(comps_data; kwargs...)
