@@ -391,6 +391,7 @@ end
 
 @testitem "basic Plot_Name recipe" begin
     using CairoMakie
+
     traj = rand(NamedTrajectory, 10, state_dim=3)
 
     f = Figure()
@@ -398,7 +399,7 @@ end
     p = plot_name!(ax, traj, :x)
     Legend(f[1,2], ax)
 
-    @test p isa Plot{Plot_Name}
+    @test p isa Plot
     
     # Test Series attributes
     for attr in [:color, :linestyle, :linewidth, :marker, :markersize]
@@ -419,14 +420,14 @@ end
     using CairoMakie
     traj = rand(NamedTrajectory, 10, state_dim=3)
     label = L"\alpha"
-    _, _, p = Plot_Name(traj, :x, label, merge=true)
+    _, _, p = plot_name(traj, :x, label, merge=true)
     # Check that LaTeX string is preserved
     @test p.plots[1].attributes.labels[][1] == label
 end
 
 @testitem "Plot_Name with one dimension" begin
     using CairoMakie
-    f, ax, plt = Plot_Name(rand(NamedTrajectory, 10, state_dim=1), :x)
+    f, ax, plt = plot_name(rand(NamedTrajectory, 10, state_dim=1), :x)
     @test f isa Figure
 end
 
