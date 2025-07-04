@@ -18,10 +18,10 @@ graphics.
 The main recipe for named trajectory plotting is as follows:
 
 ```@docs; canonical = false
-namedplot
+plot_name
 ```
 
-The `plot` function is a wrapper around `namedplot` that allows for easy plotting of
+The `plot` function is a wrapper around `plot_name` that allows for easy plotting of
 `NamedTrajectory` objects. The `plot` function has the following signature:
 
 ```julia
