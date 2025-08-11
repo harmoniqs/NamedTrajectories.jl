@@ -125,8 +125,8 @@ where $\mathbf{Z}$ is a trajectory.
 In more detail, this problem might look something like
 ```math
 \begin{align*}
-\underset{u^1_{1:T}, \dots, u^{n_c}_{1:T}}{\underset{x^1_{1:T}, \cdots, x^{n_s}_{1:T}}{\text{minimize}}} &\quad J\qty(x^{1:n_s}_{1:T},u^{1:n_c}_{1:T}) \\
-\text{subject to} & \quad f\qty(x^{1:n_s}_{1:T},u^{1:n_c}_{1:T}) = 0 \\
+\underset{u^1_{1:T}, \dots, u^{n_c}_{1:T}}{\underset{x^1_{1:T}, \cdots, x^{n_s}_{1:T}}{\text{minimize}}} &\quad J \left(x^{1:n_s}_{1:T},u^{1:n_c}_{1:T} \right) \\
+\text{subject to} & \quad f \left(x^{1:n_s}_{1:T},u^{1:n_c}_{1:T} \right) = 0 \\
 & \quad x^i_1 = x^i_{\text{initial}} \\
 & \quad x^i_T = x^i_{\text{final}} \\
 & \quad u^i_1 = u^i_{\text{initial}} \\
@@ -154,8 +154,8 @@ The trajectory optimization problem can then be succinctly written as
 
 ```math
 \begin{align*}
-\underset{z_{1:T}}{\text{minimize}} &\quad J\qty(z_{1:T}) \\
-\text{subject to} & \quad f\qty(z_{1:T}) = 0 \\
+\underset{z_{1:T}}{\text{minimize}} &\quad J \left(z_{1:T} \right) \\
+\text{subject to} & \quad f \left(z_{1:T} \right) = 0 \\
 & \quad z_1 = z_{\text{initial}} \\
 & \quad z_T = z_{\text{final}} \\
 & \quad z_{\min} < z_t < z_{\max} \\
