@@ -163,3 +163,40 @@ The trajectory optimization problem can then be succinctly written as
 ```
 
 The `NamedTrajectories` package provides a `NamedTrajectory` type which abstracts away the messy indexing and vectorization details required for interfacing with numerical solvers.  It also provides a variety of helpful methods for common tasks.  For example, you can access the data by name or index.  In the case of an index, a `KnotPoint` is returned which contains the data for that timestep.
+
+
+### Building Documentation
+This package uses a Documenter config that is shared with many of our other repositories. To build the docs, you will need to run the docs setup script to clone and pull down the utility. 
+```
+# first time only
+./docs/get_docs_utils.sh   # or ./get_docs_utils.sh if cwd is in ./docs/
+```
+
+To build the docs pages:
+```
+julia --project=docs docs/make.jl
+```
+
+or editing the docs live:
+```
+julia --project=docs
+> using LiveServer, Piccolo, Revise
+> servedocs(literate_dir="docs/literate", skip_dirs=["docs/src/generated", "docs/src/assets/"], skip_files=["docs/src/index.md"])
+```
+
+## NOTE:
+servedocs needs to watch a subset of the files in the `docs/` folder. If it watches files that are generated on a docs build/re-build, servedocs will continuously try to reserve the pages.
+
+To prevent this, ensure all generated files are included in the skip dirs or skip files args for servedocs.
+
+For example, if we forget index.md like so:
+```
+julia --project=docs
+> using LiveServer, Piccolo, Revise
+> servedocs(literate_dir="docs/literate", skip_dirs=["docs/src/generated", "docs/src/assets/"])
+```
+it will not build and serve.
+
+-----
+
+*"It seems that perfection is attained not when there is nothing more to add, but when there is nothing more to take away." - Antoine de Saint-Exupéry*
