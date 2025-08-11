@@ -140,14 +140,14 @@ where $x^i_t$ is the $i$ th state variable and $u^i_t$ is the $i$ th control var
 It is common practice in trajectory optimization to bundle all of the state and control variables together into a single *knot point*
 
 ```math
-z_t = \mqty(
+z_t = \begin{pmatrix}
     x^1_t \\
     \vdots \\
     x^{n_s}_t \\
     u^1_t \\
     \vdots \\
     u^{n_c}_t
-).
+  \end{pmatrix}.
 ```
 
 The trajectory optimization problem can then be succinctly written as
