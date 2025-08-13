@@ -6,6 +6,43 @@ using DataInterpolations
 using TestItems
 
 
+"""
+    trajectory_interpolation(
+        traj::NamedTrajectory,
+        times::AbstractVector;
+        interpolations::NamedTuple=NamedTuple(zip(traj.names, fill(:linear, length(traj.names))))
+    )
+
+Interpolate a `NamedTrajectory` at specified time points.
+
+# Arguments
+- `traj::NamedTrajectory`: The trajectory to interpolate.
+- `times::AbstractVector`: The time points at which to interpolate the trajectory.
+
+# Keyword Arguments
+- `interpolations::NamedTuple`: A named tuple specifying the interpolation method for each 
+  component. Supported methods are `:constant`, `:linear`, and `:spline`. Defaults to 
+  `:linear` for all components.
+
+# Returns
+- `NamedTrajectory`: A new trajectory with interpolated values at the specified times.
+
+# Notes
+- Components not specified in `interpolations` will be dropped from the returned trajectory.
+- The timestep component is automatically included with linear interpolation if not specified.
+- Spline interpolation requires derivative components (e.g., `du` for component `u`).
+
+# Examples
+```julia
+# Linear interpolation at new time points
+new_times = [0.0, 0.5, 1.0, 1.5, 2.0]
+new_traj = trajectory_interpolation(traj, new_times)
+
+# Mix of interpolation methods
+interpolations = (x = :linear, u = :spline, Δt = :linear)
+new_traj = trajectory_interpolation(traj, new_times; interpolations=interpolations)
+```
+"""
 function NamedTrajectories.trajectory_interpolation(
     traj::NamedTrajectory,
     times::AbstractVector;
@@ -49,6 +86,35 @@ function NamedTrajectories.trajectory_interpolation(
     )
 end
 
+"""
+    trajectory_interpolation(
+        traj::NamedTrajectory,
+        T::Int;
+        kwargs...
+    )
+
+Interpolate a `NamedTrajectory` to a new number of time steps.
+
+# Arguments
+- `traj::NamedTrajectory`: The trajectory to interpolate.
+- `T::Int`: The number of time steps in the interpolated trajectory.
+
+# Keyword Arguments
+- `kwargs...`: Additional keyword arguments passed to the main `trajectory_interpolation` method.
+
+# Returns
+- `NamedTrajectory`: A new trajectory with `T` time steps, evenly spaced between the original 
+  start and end times.
+
+# Examples
+```julia
+# Interpolate to 100 time steps
+new_traj = trajectory_interpolation(traj, 100)
+
+# With custom interpolation methods
+new_traj = trajectory_interpolation(traj, 100; interpolations=(x=:spline, u=:linear))
+```
+"""
 function NamedTrajectories.trajectory_interpolation(
     traj::NamedTrajectory,
     T::Int;
@@ -59,6 +125,34 @@ function NamedTrajectories.trajectory_interpolation(
     return trajectory_interpolation(traj, new_times; kwargs...)
 end
 
+"""
+    ConstantInterpolation(traj::NamedTrajectory, x::Symbol; kwargs...)
+
+Create a constant (zero-order hold) interpolation object for a trajectory component.
+
+# Arguments
+- `traj::NamedTrajectory`: The trajectory containing the component to interpolate.
+- `x::Symbol`: The name of the component to interpolate.
+
+# Keyword Arguments
+- `kwargs...`: Additional keyword arguments passed to `DataInterpolations.ConstantInterpolation`.
+
+# Returns
+- `ConstantInterpolation`: An interpolation object that can be called with time values to 
+  get interpolated component values.
+
+# Throws
+- `AssertionError`: If the component `x` is not found in the trajectory.
+
+# Examples
+```julia
+# Create an interpolation object
+interp = ConstantInterpolation(traj, :x)
+
+# Evaluate at a specific time
+value = interp(2.5)
+```
+"""
 function DataInterpolations.ConstantInterpolation(
     traj::NamedTrajectory, x::Symbol; kwargs...
 )
@@ -66,6 +160,34 @@ function DataInterpolations.ConstantInterpolation(
     return ConstantInterpolation(traj[x], get_times(traj); kwargs...)
 end
 
+"""
+    LinearInterpolation(traj::NamedTrajectory, x::Symbol; kwargs...)
+
+Create a linear (first-order) interpolation object for a trajectory component.
+
+# Arguments
+- `traj::NamedTrajectory`: The trajectory containing the component to interpolate.
+- `x::Symbol`: The name of the component to interpolate.
+
+# Keyword Arguments
+- `kwargs...`: Additional keyword arguments passed to `DataInterpolations.LinearInterpolation`.
+
+# Returns
+- `LinearInterpolation`: An interpolation object that can be called with time values to 
+  get interpolated component values.
+
+# Throws
+- `AssertionError`: If the component `x` is not found in the trajectory.
+
+# Examples
+```julia
+# Create an interpolation object
+interp = LinearInterpolation(traj, :x)
+
+# Evaluate at a specific time
+value = interp(2.5)
+```
+"""
 function DataInterpolations.LinearInterpolation(
     traj::NamedTrajectory, x::Symbol; kwargs...
 )
@@ -73,6 +195,35 @@ function DataInterpolations.LinearInterpolation(
     return LinearInterpolation(traj[x], get_times(traj); kwargs...)
 end
 
+"""
+    CubicHermiteSpline(traj::NamedTrajectory, dx::Symbol, x::Symbol; kwargs...)
+
+Create a cubic Hermite spline interpolation object for a trajectory component using its derivative.
+
+# Arguments
+- `traj::NamedTrajectory`: The trajectory containing the component and its derivative.
+- `dx::Symbol`: The name of the derivative component (e.g., `:du` for velocity).
+- `x::Symbol`: The name of the component to interpolate (e.g., `:u` for position).
+
+# Keyword Arguments
+- `kwargs...`: Additional keyword arguments passed to `DataInterpolations.CubicHermiteSpline`.
+
+# Returns
+- `CubicHermiteSpline`: An interpolation object that can be called with time values to 
+  get interpolated component values.
+
+# Throws
+- `AssertionError`: If either component `x` or derivative component `dx` is not found in the trajectory.
+
+# Examples
+```julia
+# Create a spline interpolation with explicit derivative component
+interp = CubicHermiteSpline(traj, :du, :u)
+
+# Evaluate at a specific time
+value = interp(2.5)
+```
+"""
 function DataInterpolations.CubicHermiteSpline(
     traj::NamedTrajectory, dx::Symbol, x::Symbol; kwargs...
 )
@@ -81,6 +232,39 @@ function DataInterpolations.CubicHermiteSpline(
     return CubicHermiteSpline(traj[dx], traj[x], get_times(traj); kwargs...)
 end
 
+"""
+    CubicHermiteSpline(traj::NamedTrajectory, x::Symbol; kwargs...)
+
+Create a cubic Hermite spline interpolation object for a trajectory component with automatic derivative lookup.
+
+# Arguments
+- `traj::NamedTrajectory`: The trajectory containing the component and its derivative.
+- `x::Symbol`: The name of the component to interpolate (e.g., `:u`).
+
+# Keyword Arguments
+- `kwargs...`: Additional keyword arguments passed to `DataInterpolations.CubicHermiteSpline`.
+
+# Returns
+- `CubicHermiteSpline`: An interpolation object that can be called with time values to 
+  get interpolated component values.
+
+# Notes
+- The derivative component is automatically inferred by prepending 'd' to the component name.
+  For example, if `x = :u`, the derivative component is assumed to be `:du`.
+
+# Throws
+- `AssertionError`: If either component `x` or its automatically inferred derivative component 
+  is not found in the trajectory.
+
+# Examples
+```julia
+# Create a spline interpolation (assumes :du exists in trajectory)
+interp = CubicHermiteSpline(traj, :u)
+
+# Evaluate at a specific time
+value = interp(2.5)
+```
+"""
 function DataInterpolations.CubicHermiteSpline(
     traj::NamedTrajectory, x::Symbol; kwargs...
 )
