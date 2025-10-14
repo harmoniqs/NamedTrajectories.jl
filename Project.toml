@@ -4,6 +4,7 @@ authors = ["Aaron Trowbridge <aaron.j.trowbridge@gmail.com> and contributors"]
 version = "0.5.0"
 
 [deps]
+DataInterpolations = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 LazyArrays = "5078a376-72f3-5289-bfd5-ec5146d43c02"
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
@@ -13,7 +14,6 @@ TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [weakdeps]
-DataInterpolations = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 
 [extensions]
