@@ -30,3 +30,10 @@ Modules = [
     Utils
 ]
 ```
+
+## Interpolation Methods
+```@autodocs
+Modules = [
+    NamedTrajectories.InterpolationsExt
+]
+```
