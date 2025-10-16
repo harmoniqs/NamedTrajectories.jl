@@ -30,3 +30,8 @@ Modules = [
     Utils
 ]
 ```
+
+## Interpolation Methods
+```@docs
+trajectory_interpolation
+```

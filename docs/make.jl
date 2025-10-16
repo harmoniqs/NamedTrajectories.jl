@@ -1,3 +1,4 @@
+using DataInterpolations
 using NamedTrajectories
 using PiccoloDocsTemplate
 
@@ -16,7 +17,10 @@ pages = [
 generate_docs(
     @__DIR__,
     "NamedTrajectories",
-    NamedTrajectories,
+    [
+        NamedTrajectories,
+        Base.get_extension(NamedTrajectories, :InterpolationsExt)
+    ],
     pages;
     format_kwargs = (canonical = "https://docs.harmoniqs.co/NamedTrajectories.jl",),
 )
