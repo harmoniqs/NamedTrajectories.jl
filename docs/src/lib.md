@@ -32,8 +32,6 @@ Modules = [
 ```
 
 ## Interpolation Methods
-```@autodocs
-Modules = [
-    NamedTrajectories.InterpolationsExt
-]
+```@docs
+trajectory_interpolation
 ```
