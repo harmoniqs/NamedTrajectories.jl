@@ -67,55 +67,55 @@ traj = NamedTrajectory(
 
 # we can then show the bounds
 traj.bounds</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(x = ([-1.0, -1.0, -1.0], [1.0, 1.0, 1.0]), u = ([-1.0, -1.0], [1.0, 1.0]))</code></pre><h2 id="Retrieving-data"><a class="docs-heading-anchor" href="#Retrieving-data">Retrieving data</a><a id="Retrieving-data-1"></a><a class="docs-heading-anchor-permalink" href="#Retrieving-data" title="Permalink"></a></h2><p>There are a number of ways to access data, for example</p><pre><code class="language-julia hljs">traj.x</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">3×10 view(reshape(view(::Vector{Float64}, :), 6, 10), 1:3, :) with eltype Float64:
- 0.654437  0.414517  0.534984  0.390808  …  0.736121  0.727037  0.734481
- 0.287492  0.951262  0.498285  0.376656     0.741853  0.294854  0.0381136
- 0.462286  0.263361  0.283114  0.595472     0.499828  0.132127  0.639438</code></pre><p>returns the data matrix associated with the state variable <code>x</code>.</p><pre><code class="language-julia hljs">traj.data</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">6×10 reshape(view(::Vector{Float64}, :), 6, 10) with eltype Float64:
- 0.654437  0.414517  0.534984  0.390808  …  0.736121  0.727037  0.734481
- 0.287492  0.951262  0.498285  0.376656     0.741853  0.294854  0.0381136
- 0.462286  0.263361  0.283114  0.595472     0.499828  0.132127  0.639438
- 0.104779  0.23272   0.579863  0.178345     0.78039   0.476412  0.594839
- 0.361923  0.53198   0.285614  0.474821     0.280871  0.818266  0.398074
- 0.500996  0.120779  0.372558  0.905485  …  0.499942  0.135278  0.448892</code></pre><p>returns the all of the data as a matrix where each column is a knot point.</p><pre><code class="language-julia hljs">traj.datavec</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">60-element Vector{Float64}:
- 0.6544373054659661
- 0.28749228122131076
- 0.46228603821498515
- 0.10477896546408427
- 0.3619226658395637
- 0.500996154182291
- 0.4145165120653309
- 0.9512622336344384
- 0.2633607922187994
- 0.2327204660920933
+ 0.792144  0.256903  0.0715278  0.780815  …  0.788243   0.739912  0.874622
+ 0.300329  0.59119   0.935117   0.75129      0.0704452  0.942767  0.309317
+ 0.372475  0.220276  0.382326   0.223496     0.411013   0.467937  0.964363</code></pre><p>returns the data matrix associated with the state variable <code>x</code>.</p><pre><code class="language-julia hljs">traj.data</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">6×10 reshape(view(::Vector{Float64}, :), 6, 10) with eltype Float64:
+ 0.792144  0.256903  0.0715278  0.780815  …  0.788243   0.739912  0.874622
+ 0.300329  0.59119   0.935117   0.75129      0.0704452  0.942767  0.309317
+ 0.372475  0.220276  0.382326   0.223496     0.411013   0.467937  0.964363
+ 0.222081  0.252706  0.395434   0.54858      0.669679   0.830394  0.365653
+ 0.554338  0.922588  0.164177   0.575378     0.52988    0.631819  0.778975
+ 0.368016  0.778767  0.958996   0.728099  …  0.432775   0.961966  0.72183</code></pre><p>returns the all of the data as a matrix where each column is a knot point.</p><pre><code class="language-julia hljs">traj.datavec</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">60-element Vector{Float64}:
+ 0.7921436906933045
+ 0.3003294317146339
+ 0.37247506336040126
+ 0.2220812999227043
+ 0.5543381611639844
+ 0.36801596954875593
+ 0.25690251128526465
+ 0.5911895350066025
+ 0.22027598200385412
+ 0.2527055111339106
  ⋮
- 0.47641211278725937
- 0.8182657625175909
- 0.13527846894648665
- 0.7344807149618604
- 0.03811363330662221
- 0.6394380138874104
- 0.5948393733027324
- 0.3980736034282537
- 0.44889248880018806</code></pre><p>returns the all of the data as a view of the data matrix as a vector – useful for passing data to solvers.</p><pre><code class="language-julia hljs">traj[1]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">KnotPoint{Float64, (:x, :u, :Δt), Tuple{UnitRange{Int64}, UnitRange{Int64}, UnitRange{Int64}}, Tuple{Symbol, Symbol, Symbol}, Tuple{Symbol, Symbol}}(1, [0.6544373054659661, 0.28749228122131076, 0.46228603821498515, 0.10477896546408427, 0.3619226658395637, 0.500996154182291], 0.500996154182291, (x = 1:3, u = 4:5, Δt = 6:6), (:x, :u, :Δt), (:u, :Δt))</code></pre><p>returns a <code>KnotPoint</code>.</p><pre><code class="language-julia hljs">traj[1].x</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">3-element view(reshape(view(::Vector{Float64}, :), 6, 10), 1:3, 1) with eltype Float64:
- 0.6544373054659661
- 0.28749228122131076
- 0.46228603821498515</code></pre><p>returns the state at the first knot point.</p><pre><code class="language-julia hljs">get_times(traj)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">10-element Vector{Float64}:
+ 0.8303937391448879
+ 0.6318192511448978
+ 0.961965572906815
+ 0.8746215709875279
+ 0.3093166276054734
+ 0.964362953919591
+ 0.3656525613319227
+ 0.778975270024966
+ 0.7218303316747721</code></pre><p>returns the all of the data as a view of the data matrix as a vector – useful for passing data to solvers.</p><pre><code class="language-julia hljs">traj[1]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">KnotPoint{Float64, (:x, :u, :Δt), Tuple{UnitRange{Int64}, UnitRange{Int64}, UnitRange{Int64}}, Tuple{Symbol, Symbol, Symbol}, Tuple{Symbol, Symbol}}(1, [0.7921436906933045, 0.3003294317146339, 0.37247506336040126, 0.2220812999227043, 0.5543381611639844, 0.36801596954875593], 0.36801596954875593, (x = 1:3, u = 4:5, Δt = 6:6), (:x, :u, :Δt), (:u, :Δt))</code></pre><p>returns a <code>KnotPoint</code>.</p><pre><code class="language-julia hljs">traj[1].x</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">3-element view(reshape(view(::Vector{Float64}, :), 6, 10), 1:3, 1) with eltype Float64:
+ 0.7921436906933045
+ 0.3003294317146339
+ 0.37247506336040126</code></pre><p>returns the state at the first knot point.</p><pre><code class="language-julia hljs">get_times(traj)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">10-element Vector{Float64}:
  0.0
- 0.500996154182291
- 0.6217753539866557
- 0.9943331490183831
- 1.8998183232087318
- 2.047562898039163
- 3.0440798692736175
- 3.082660713057315
- 3.582603125740957
- 3.7178815946874435</code></pre><p>returns the times of the knot points.</p><pre><code class="language-julia hljs">get_timesteps(traj)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">10-element reshape(view(reshape(view(::Vector{Float64}, :), 6, 10), 6:6, :), 10) with eltype Float64:
- 0.500996154182291
- 0.12077919980436469
- 0.37255779503172737
- 0.9054851741903487
- 0.14774457483043157
- 0.9965169712344542
- 0.03858084378369764
- 0.4999424126836419
- 0.13527846894648665
- 0.44889248880018806</code></pre><p>returns the timesteps of the knot points, as vector.</p><h2 id="Retrieving-metadata"><a class="docs-heading-anchor" href="#Retrieving-metadata">Retrieving metadata</a><a id="Retrieving-metadata-1"></a><a class="docs-heading-anchor-permalink" href="#Retrieving-metadata" title="Permalink"></a></h2><p>We can also retrieve metadata about the trajectory, for example</p><pre><code class="language-julia hljs">traj.names</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(:x, :u, :Δt)</code></pre><p>returns the names of the variables stored in the trajectory.</p><pre><code class="language-julia hljs">traj.dims</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(x = 3, u = 2, Δt = 1)</code></pre><p>returns the dimensions of the variables stored in the trajectory.</p><pre><code class="language-julia hljs">traj.T</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">10</code></pre><p>returns the number of knot points in the trajectory.</p><pre><code class="language-julia hljs">traj.components</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(x = 1:3, u = 4:5, Δt = 6:6)</code></pre><p>returns the components of the trajectory.</p><h2 id="Updating-problem-data"><a class="docs-heading-anchor" href="#Updating-problem-data">Updating problem data</a><a id="Updating-problem-data-1"></a><a class="docs-heading-anchor-permalink" href="#Updating-problem-data" title="Permalink"></a></h2><p>The <code>NamedTrajectory</code> can be updated by accessing fields and replacing the data.</p><p>We also have <code>update!</code> to update trajectory components, and  <code>update_bound!</code>, which allows you to pass in the same kinds of bounds available at construction (e.g., an <code>Int</code> or <code>Tuple</code>). The bound will get shaped to match the trajectory component dimensions just like at construction. These methods cannot be used to update non-existent bounds or components.</p><p>For efficiency, a trajectory cannot add new data after it is constructed. However, we have convenience methods like <code>add_component</code> that build a new trajectory with added data.</p><pre><code class="language-julia hljs">update_bound!(traj, :x, 2.) # TODO: consider fleshing out this section with more examples of updating trajectory components, knot points, globals, bounds, etc.</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« Home</a><a class="docs-footer-nextpage" href="../man/constructors/">Constructors »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Thursday 16 October 2025 05:02">Thursday 16 October 2025</span>. Using Julia version 1.12.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ 0.36801596954875593
+ 1.1467831482377755
+ 2.105778963122427
+ 2.8338777242465607
+ 3.668941697880914
+ 4.366829859507293
+ 5.295582710217692
+ 5.728357599760637
+ 6.690323172667451</code></pre><p>returns the times of the knot points.</p><pre><code class="language-julia hljs">get_timesteps(traj)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">10-element reshape(view(reshape(view(::Vector{Float64}, :), 6, 10), 6:6, :), 10) with eltype Float64:
+ 0.36801596954875593
+ 0.7787671786890197
+ 0.9589958148846517
+ 0.7280987611241336
+ 0.8350639736343534
+ 0.697888161626379
+ 0.9287528507103996
+ 0.43277488954294485
+ 0.961965572906815
+ 0.7218303316747721</code></pre><p>returns the timesteps of the knot points, as vector.</p><h2 id="Retrieving-metadata"><a class="docs-heading-anchor" href="#Retrieving-metadata">Retrieving metadata</a><a id="Retrieving-metadata-1"></a><a class="docs-heading-anchor-permalink" href="#Retrieving-metadata" title="Permalink"></a></h2><p>We can also retrieve metadata about the trajectory, for example</p><pre><code class="language-julia hljs">traj.names</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(:x, :u, :Δt)</code></pre><p>returns the names of the variables stored in the trajectory.</p><pre><code class="language-julia hljs">traj.dims</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(x = 3, u = 2, Δt = 1)</code></pre><p>returns the dimensions of the variables stored in the trajectory.</p><pre><code class="language-julia hljs">traj.T</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">10</code></pre><p>returns the number of knot points in the trajectory.</p><pre><code class="language-julia hljs">traj.components</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(x = 1:3, u = 4:5, Δt = 6:6)</code></pre><p>returns the components of the trajectory.</p><h2 id="Updating-problem-data"><a class="docs-heading-anchor" href="#Updating-problem-data">Updating problem data</a><a id="Updating-problem-data-1"></a><a class="docs-heading-anchor-permalink" href="#Updating-problem-data" title="Permalink"></a></h2><p>The <code>NamedTrajectory</code> can be updated by accessing fields and replacing the data.</p><p>We also have <code>update!</code> to update trajectory components, and  <code>update_bound!</code>, which allows you to pass in the same kinds of bounds available at construction (e.g., an <code>Int</code> or <code>Tuple</code>). The bound will get shaped to match the trajectory component dimensions just like at construction. These methods cannot be used to update non-existent bounds or components.</p><p>For efficiency, a trajectory cannot add new data after it is constructed. However, we have convenience methods like <code>add_component</code> that build a new trajectory with added data.</p><pre><code class="language-julia hljs">update_bound!(traj, :x, 2.) # TODO: consider fleshing out this section with more examples of updating trajectory components, knot points, globals, bounds, etc.</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« Home</a><a class="docs-footer-nextpage" href="../man/constructors/">Constructors »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.15.0 on <span class="colophon-date" title="Wednesday 22 October 2025 23:12">Wednesday 22 October 2025</span>. Using Julia version 1.12.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
