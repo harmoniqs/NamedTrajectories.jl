@@ -60,7 +60,7 @@
 
 NamedTrajectories.jl is registered! Install in the REPL by entering pkg mode with `]` and then running
 
-```julia repl
+```julia
 pkg> add NamedTrajectories
 ```
 
@@ -75,22 +75,21 @@ pkg> add NamedTrajectories
 
 Users can define `NamedTrajectory` types which have lots of useful functionality. For example, you can access the data by name or index.  In the case of an index, a `KnotPoint` is returned which contains the data for that timestep.
 
-```julia
+```julia example
 using NamedTrajectories
 
 # define number of timesteps and timestep
 T = 10
-timestep=:dt
+dt = 0.1
 
 # build named tuple of components and data matrices
 components = (
-    x  = rand(3, T),
-    u  = rand(2, T),
-    dt = fill(0.1, T),
+    x = rand(3, T),
+    u = rand(2, T),
 )
 
 # build trajectory
-traj = NamedTrajectory(components; timestep=timestep, controls=:u)
+traj = NamedTrajectory(components; timestep=dt, controls=:u)
 
 # access data by name
 traj.x # returns 3x10 matrix of x data
@@ -100,8 +99,6 @@ z1 = traj[1] # returns KnotPoint with x and u data
 
 z1.x # returns 3 element vector of x data at timestep 1
 z1.u # returns 2 element vector of u data at timestep 1
-
-z1.dt # returns 10 element vector of timesteps
 
 traj.data # returns data as 5x10 matrix
 traj.names # returns names as tuple (:x, :u)
