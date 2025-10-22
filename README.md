@@ -2,7 +2,7 @@
 <div align="center">
   <a href="https://github.com/harmoniqs/Piccolo.jl">
     <img src="assets/logo.svg" alt="logo" width="25%"/>
-  </a> 
+  </a>
 </div>
 
 <div align="center">
@@ -58,7 +58,7 @@
 
 ## Installation
 
-NamedTrajectories.jl is registered! Install in the REPL by entering pkg mode with `]` and then running 
+NamedTrajectories.jl is registered! Install in the REPL by entering pkg mode with `]` and then running
 
 ```julia
 pkg> add NamedTrajectories
@@ -75,7 +75,7 @@ pkg> add NamedTrajectories
 
 Users can define `NamedTrajectory` types which have lots of useful functionality. For example, you can access the data by name or index.  In the case of an index, a `KnotPoint` is returned which contains the data for that timestep.
 
-```@example
+<!--```@example-->
 using NamedTrajectories
 
 # define number of timesteps and timestep
@@ -105,7 +105,7 @@ z1.dt # returns 10 element vector of timesteps
 
 traj.data # returns data as 5x10 matrix
 traj.names # returns names as tuple (:x, :u)
-```
+<!--```-->
 
 ## Motivation
 
@@ -114,7 +114,7 @@ traj.names # returns names as tuple (:x, :u)
 \begin{aligned}
     \arg \min_{\mathbf{Z}}\quad & J(\mathbf{Z}) \\
     \nonumber \text{s.t.}\qquad & \mathbf{f}(\mathbf{Z}) = 0 \\
-    \nonumber & \mathbf{g}(\mathbf{Z}) \le 0  
+    \nonumber & \mathbf{g}(\mathbf{Z}) \le 0
 \end{aligned}
 ```
 where $\mathbf{Z}$ is a trajectory.
@@ -132,7 +132,7 @@ In more detail, this problem might look something like
 & \quad u^i_{\min} < u^i_t < u^i_{\max} \\
 \end{align*}
 ```
-where $x^i_t$ is the $i$ th state variable and $u^i_t$ is the $i$ th control variable at timestep $t$; state and control variables can be of arbitrary dimension. The function $f$ is a nonlinear constraint function and $J$ is the objective function. These problems can have an arbitrary number of state ($n_s$) and control ($n_c$) variables, and the number of timesteps $T$ can vary as well.  
+where $x^i_t$ is the $i$ th state variable and $u^i_t$ is the $i$ th control variable at timestep $t$; state and control variables can be of arbitrary dimension. The function $f$ is a nonlinear constraint function and $J$ is the objective function. These problems can have an arbitrary number of state ($n_s$) and control ($n_c$) variables, and the number of timesteps $T$ can vary as well.
 
 It is common practice in trajectory optimization to bundle all of the state and control variables together into a single *knot point*
 
@@ -163,7 +163,7 @@ The `NamedTrajectories` package provides a `NamedTrajectory` type which abstract
 
 
 ### Building Documentation
-This package uses a Documenter config that is shared with many of our other repositories. To build the docs, you will need to run the docs setup script to clone and pull down the utility. 
+This package uses a Documenter config that is shared with many of our other repositories. To build the docs, you will need to run the docs setup script to clone and pull down the utility.
 ```
 # first time only
 ./docs/get_docs_utils.sh   # or ./get_docs_utils.sh if cwd is in ./docs/
@@ -177,12 +177,12 @@ julia --project=docs docs/make.jl
 or editing the docs live:
 ```
 julia --project=docs
-> using LiveServer, Piccolo, Revise
+> using LiveServer, NamedTrajectories, Revise
 > servedocs(literate_dir="docs/literate", skip_dirs=["docs/src/generated", "docs/src/assets/"], skip_files=["docs/src/index.md"])
 ```
 
 > **Note:** `servedocs` needs to watch a subset of the files in the `docs/` folder. If it watches files that are generated on a docs build/re-build, `servedocs` will continuously try to re-serve the pages.
-> 
+>
 > To prevent this, ensure all generated files are included in the skip dirs or skip files args for `servedocs`.
 
 
