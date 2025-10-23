@@ -12,32 +12,32 @@ traj.names, conflicting_traj.names</code></pre><pre class="documenter-example-ou
 println(merged_traj.u == traj.u, &quot;, &quot;, merged_traj.u == conflicting_traj.u)
 println(merged_traj.x == traj.x, &quot;, &quot;, merged_traj.x == conflicting_traj.x)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">true, false
 false, true</code></pre><p>Merged names</p><pre><code class="language-julia hljs">merged_traj.names</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(:y, :x, :u, :Δt)</code></pre><h2 id="Advanced-usage"><a class="docs-heading-anchor" href="#Advanced-usage">Advanced usage</a><a id="Advanced-usage-1"></a><a class="docs-heading-anchor-permalink" href="#Advanced-usage" title="Permalink"></a></h2><p>Sometimes it may be desirable to have direct access to the underlying data matrix/vector associated with the trajectory. In other circumstances it is more useful to employ the built-in per-component and per-knot-point indexing functionality. We detail the relationship between these different methods of access here.</p><pre><code class="language-julia hljs">traj = rand(NamedTrajectory, 5)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">T = 5, (x = 1:3, u = 4:5, → Δt = 6:6)</code></pre><p>The &quot;backing store&quot; of a <code>NamedTrajectory</code> is its <code>datavec</code> field, a <code>Vector{&lt;:Real}</code>:</p><pre><code class="language-julia hljs">traj.datavec</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">30-element Vector{Float64}:
-  1.1785352054628522
- -0.3072687371286378
- -0.5874708319989171
-  0.5146085480216405
-  2.269571369849009
+  0.6966185711950078
+ -0.44937322547478986
+ -1.0080805738302985
+ -0.3461997503036804
+  0.41329809019484426
   1.0
- -0.34684747125097454
- -1.5443616471128052
- -0.6384776568554061
- -0.9130875771174504
+  1.709647568279384
+ -0.07808912912130729
+  2.244727625895107
+ -0.6072712439792385
   ⋮
- -0.6729986053294096
- -0.05299137698497301
+ -0.438922585867644
+ -0.21073758126876307
   1.0
-  0.30663146677199454
-  0.8462914729700816
-  1.0549919349406316
- -2.223374602341337
-  0.12460140609964161
+  0.33220727473399714
+  0.48639619659123734
+ -0.11892231866239907
+ -0.9618038004966861
+ -0.5261516534415486
   1.0</code></pre><p>The <code>data</code> field holds a reshaped &quot;view&quot; of the &quot;backing store&quot;, in a form that is somewhat easier to work with:</p><pre><code class="language-julia hljs">traj.data</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">6×5 reshape(view(::Vector{Float64}, :), 6, 5) with eltype Float64:
-  1.17854   -0.346847  -0.734546   0.151111    0.306631
- -0.307269  -1.54436    0.772724  -0.263693    0.846291
- -0.587471  -0.638478  -0.397172   0.667601    1.05499
-  0.514609  -0.913088  -0.726164  -0.672999   -2.22337
-  2.26957    0.783074  -0.97192   -0.0529914   0.124601
-  1.0        1.0        1.0        1.0         1.0</code></pre><h3 id="Indexing"><a class="docs-heading-anchor" href="#Indexing">Indexing</a><a id="Indexing-1"></a><a class="docs-heading-anchor-permalink" href="#Indexing" title="Permalink"></a></h3><p>The <code>data</code> matrix is of dimension <code>(traj.dim, traj.T)</code>, where <code>length(traj.names) == traj.dim</code></p><p>The nth component&#39;s indices are given by <code>traj.components[traj.names[n]]</code></p><pre><code class="language-julia hljs">println(traj.names)
+  0.696619   1.70965    -0.778111   0.894356   0.332207
+ -0.449373  -0.0780891   1.31236   -0.147665   0.486396
+ -1.00808    2.24473    -0.793739  -0.452023  -0.118922
+ -0.3462    -0.607271   -1.13546   -0.438923  -0.961804
+  0.413298   0.0490102   0.269437  -0.210738  -0.526152
+  1.0        1.0         1.0        1.0        1.0</code></pre><h3 id="Indexing"><a class="docs-heading-anchor" href="#Indexing">Indexing</a><a id="Indexing-1"></a><a class="docs-heading-anchor-permalink" href="#Indexing" title="Permalink"></a></h3><p>The <code>data</code> matrix is of dimension <code>(traj.dim, traj.T)</code>, where <code>length(traj.names) == traj.dim</code></p><p>The nth component&#39;s indices are given by <code>traj.components[traj.names[n]]</code></p><pre><code class="language-julia hljs">println(traj.names)
 println(traj.components)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(:x, :u, :Δt)
 (x = 1:3, u = 4:5, Δt = 6:6)</code></pre><p>For instance, the indices of a given component at a given knot point are given as follows:</p><pre><code class="language-julia hljs">idx = 1 # x
 t = 3
@@ -52,49 +52,49 @@ println(traj.datavec)
 traj.datavec[1] *= 0.
 println(traj.datavec)
 traj.datavec[:] = rand(length(traj.datavec))
-println(traj.datavec)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">[-1.4397508686542977, 0.7590970219140201, -1.429519627683479, -0.575401101338057, 0.49442905457486447, 1.0, -0.5593036418243649, 0.21779716086398482, 0.34460659108071007, 0.02366194104671712, -0.8692094117884389, 1.0, -1.8187859710075882, 0.4301681740049344, 0.3584927218484323, -0.4532677744512315, -1.9984761306831627, 1.0, -3.6033922026010607, -0.8101981002628723, 0.03947608625485755, 0.10025446279286059, 0.6419175552167833, 1.0, -0.10633922723668267, 0.9705735952827732, 1.5971017592566146, 0.3861146076913218, 0.3392938648787311, 1.0]
-[-0.0, 0.7590970219140201, -1.429519627683479, -0.575401101338057, 0.49442905457486447, 1.0, -0.5593036418243649, 0.21779716086398482, 0.34460659108071007, 0.02366194104671712, -0.8692094117884389, 1.0, -1.8187859710075882, 0.4301681740049344, 0.3584927218484323, -0.4532677744512315, -1.9984761306831627, 1.0, -3.6033922026010607, -0.8101981002628723, 0.03947608625485755, 0.10025446279286059, 0.6419175552167833, 1.0, -0.10633922723668267, 0.9705735952827732, 1.5971017592566146, 0.3861146076913218, 0.3392938648787311, 1.0]
-[0.362864912689297, 0.6603801717527855, 0.3127171274795043, 0.3466771438405082, 0.43918567790679375, 0.4141814991073468, 0.08673152133640227, 0.27909012459490623, 0.8979883728560015, 0.5525459724530535, 0.4519005810024752, 0.6878321149420942, 0.40266459482547945, 0.30140995718732533, 0.7550212895601337, 0.9191398963769241, 0.8345428832960694, 0.46165170493360375, 0.2832708493845818, 0.5887097161225336, 0.752946145682195, 0.7247359424598113, 0.96327592932454, 0.15467842843970558, 0.9839363434738531, 0.8479020778016139, 0.17652453999623507, 0.5796133659100424, 0.8342225782642979, 0.2426720117637765]</code></pre><p>The following is an example of an &quot;unsafe&quot; operation (non-in-place modification of the <code>datavec</code>):</p><pre><code class="language-julia hljs">traj = rand(NamedTrajectory, 5)
+println(traj.datavec)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">[-1.4485452647778236, 1.319955961170157, -0.7470893536637001, 1.22824469622707, -1.8111294574888679, 1.0, -1.2929120673530428, -0.231957508551504, -0.3536249906512945, 0.7613314089371387, 0.7686429195895592, 1.0, 0.73855144314928, -0.7662038159348904, -0.31176182150653514, 1.2392003172001547, -1.3645843863607738, 1.0, -0.8056468978615787, -0.4462231041519242, -0.25627920989024383, -1.095475406752722, -0.5857396042634839, 1.0, -0.8382901799700053, -0.604270983318344, 0.2543290770160155, 1.1165450424609202, -0.1392351477982978, 1.0]
+[-0.0, 1.319955961170157, -0.7470893536637001, 1.22824469622707, -1.8111294574888679, 1.0, -1.2929120673530428, -0.231957508551504, -0.3536249906512945, 0.7613314089371387, 0.7686429195895592, 1.0, 0.73855144314928, -0.7662038159348904, -0.31176182150653514, 1.2392003172001547, -1.3645843863607738, 1.0, -0.8056468978615787, -0.4462231041519242, -0.25627920989024383, -1.095475406752722, -0.5857396042634839, 1.0, -0.8382901799700053, -0.604270983318344, 0.2543290770160155, 1.1165450424609202, -0.1392351477982978, 1.0]
+[0.77418765205915, 0.2191656917604894, 0.883218955921919, 0.8407578786943766, 0.5339218997790951, 0.5177424450225755, 0.6989875602760874, 0.07625975213354053, 0.6643128778736216, 0.7929979725332347, 0.6532104427313236, 0.5173320241085253, 0.1282612279898987, 0.33733811952651793, 0.4608360145988525, 0.6454396454821362, 0.7845850994816955, 0.634766145223513, 0.1424551177091632, 0.9504302129331056, 0.8213173001316065, 0.12585014260264116, 0.6054927271580635, 0.0963289316121908, 0.8572989579494366, 0.2149093597068994, 0.18848799375692704, 0.18481603307238292, 0.11948367126788972, 0.25008294104555684]</code></pre><p>The following is an example of an &quot;unsafe&quot; operation (non-in-place modification of the <code>datavec</code>):</p><pre><code class="language-julia hljs">traj = rand(NamedTrajectory, 5)
 println(traj.datavec == traj.data[:])
 traj.datavec = rand(length(traj.datavec))
 println(traj.datavec == traj.data[:]) # the `data` field now points to a &quot;backing store&quot; that is no longer accessible via `traj.datavec`; this will lead to undefined behavior:</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">true
 true</code></pre><p>In general, reassigning the values of any of the fields of a trajectory may lead to undefined behavior:</p><pre><code class="language-julia hljs">fieldnames(NamedTrajectory)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(:datavec, :T, :timestep, :dim, :dims, :bounds, :initial, :final, :goal, :components, :names, :state_names, :control_names, :global_data, :global_dim, :global_dims, :global_components, :global_names)</code></pre><p>TODO:</p><ul><li>Prevent this issue by catching attempts to set sensitive fields in <code>Base.setproperty!(::NamedTrajectory, ::Symbol, ::Any)</code> (<code>datavec</code> and <code>data</code> are the primary concern in this regard; however, issuing a warning of some kind may be appropriate).<ul><li>Particularly because it is confusing that <code>traj.datavec = zeros(length(datavec))</code> is &quot;discouraged&quot;, while <code>traj.x = zeros(traj.dims.x, traj.T)</code> and <code>traj[1].x = zeros(traj.dims.x)</code> are both valid.</li></ul></li></ul><h4 id="Components-and-Knot-Points"><a class="docs-heading-anchor" href="#Components-and-Knot-Points">Components and Knot Points</a><a id="Components-and-Knot-Points-1"></a><a class="docs-heading-anchor-permalink" href="#Components-and-Knot-Points" title="Permalink"></a></h4><pre><code class="language-julia hljs">traj = rand(NamedTrajectory, 5)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">T = 5, (x = 1:3, u = 4:5, → Δt = 6:6)</code></pre><p>Trajectory components are accessible (as a &quot;view&quot;) via <code>getproperty</code>:</p><pre><code class="language-julia hljs">traj.x</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">3×5 view(reshape(view(::Vector{Float64}, :), 6, 5), 1:3, :) with eltype Float64:
- -0.825731  -0.230646  -0.887562   0.359494   2.35489
- -2.26036    0.371372   1.19895   -0.766636  -1.04069
- -0.789039  -1.43053    1.27609    0.868872  -1.77431</code></pre><p>Components are also writable via <code>setproperty!</code>:</p><pre><code class="language-julia hljs">traj.x = rand(traj.dims.x, traj.T)
+ -0.250055  -0.322392   0.165994   0.68567   -1.08212
+ -1.41519   -1.09841    0.124527  -0.769613  -0.944617
+  0.845388   1.91071   -1.53634   -1.02547   -0.279738</code></pre><p>Components are also writable via <code>setproperty!</code>:</p><pre><code class="language-julia hljs">traj.x = rand(traj.dims.x, traj.T)
 traj.x</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">3×5 view(reshape(view(::Vector{Float64}, :), 6, 5), 1:3, :) with eltype Float64:
- 0.0206728  0.318709  0.18275   0.625523  0.644746
- 0.878324   0.946102  0.711446  0.101935  0.0635402
- 0.29603    0.649864  0.11017   0.458891  0.176661</code></pre><p>or may be modified directly:</p><pre><code class="language-julia hljs">traj.x[1] *= 0.
+ 0.130484  0.118756  0.36127   0.504499  0.631658
+ 0.975361  0.695332  0.111601  0.274129  0.409249
+ 0.846838  0.257155  0.311896  0.4602    0.539035</code></pre><p>or may be modified directly:</p><pre><code class="language-julia hljs">traj.x[1] *= 0.
 traj.x</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">3×5 view(reshape(view(::Vector{Float64}, :), 6, 5), 1:3, :) with eltype Float64:
- 0.0       0.318709  0.18275   0.625523  0.644746
- 0.878324  0.946102  0.711446  0.101935  0.0635402
- 0.29603   0.649864  0.11017   0.458891  0.176661</code></pre><p>Knot points are likewise accessible via <code>getindex</code>:</p><pre><code class="language-julia hljs">traj[1]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">KnotPoint{Float64, (:x, :u, :Δt), Tuple{UnitRange{Int64}, UnitRange{Int64}, UnitRange{Int64}}, Tuple{Symbol, Symbol, Symbol}, Tuple{Symbol, Symbol}}(1, [0.0, 0.8783239303906221, 0.29603005197168764, 0.43273674398338113, -0.4102911217969329, 1.0], 1.0, (x = 1:3, u = 4:5, Δt = 6:6), (:x, :u, :Δt), (:u, :Δt))</code></pre><p>A <code>KnotPoint</code> behaves much like a <code>NamedTrajectory</code>, with respect to getting, setting, and/or modifying its components:</p><pre><code class="language-julia hljs">traj[1].u</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2-element view(reshape(view(::Vector{Float64}, :), 6, 5), 4:5, 1) with eltype Float64:
-  0.43273674398338113
- -0.4102911217969329</code></pre><pre><code class="language-julia hljs">traj[1].u = rand(traj.dims.u)
+ 0.0       0.118756  0.36127   0.504499  0.631658
+ 0.975361  0.695332  0.111601  0.274129  0.409249
+ 0.846838  0.257155  0.311896  0.4602    0.539035</code></pre><p>Knot points are likewise accessible via <code>getindex</code>:</p><pre><code class="language-julia hljs">traj[1]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">KnotPoint{Float64, (:x, :u, :Δt), Tuple{UnitRange{Int64}, UnitRange{Int64}, UnitRange{Int64}}, Tuple{Symbol, Symbol, Symbol}, Tuple{Symbol, Symbol}}(1, [0.0, 0.9753608652719112, 0.8468378838619918, -1.1477856751872229, 1.1498323929723109, 1.0], 1.0, (x = 1:3, u = 4:5, Δt = 6:6), (:x, :u, :Δt), (:u, :Δt))</code></pre><p>A <code>KnotPoint</code> behaves much like a <code>NamedTrajectory</code>, with respect to getting, setting, and/or modifying its components:</p><pre><code class="language-julia hljs">traj[1].u</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2-element view(reshape(view(::Vector{Float64}, :), 6, 5), 4:5, 1) with eltype Float64:
+ -1.1477856751872229
+  1.1498323929723109</code></pre><pre><code class="language-julia hljs">traj[1].u = rand(traj.dims.u)
 traj[1].u</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2-element view(reshape(view(::Vector{Float64}, :), 6, 5), 4:5, 1) with eltype Float64:
- 0.401622385540333
- 0.33448581174328695</code></pre><pre><code class="language-julia hljs">traj[1].u[1] *= 0
+ 0.17154503009104272
+ 0.4112621881347913</code></pre><pre><code class="language-julia hljs">traj[1].u[1] *= 0
 traj[1].u</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2-element view(reshape(view(::Vector{Float64}, :), 6, 5), 4:5, 1) with eltype Float64:
  0.0
- 0.33448581174328695</code></pre><p>The parent trajectory will reflect any modifications made in this fashion:</p><pre><code class="language-julia hljs">traj.datavec</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">30-element Vector{Float64}:
+ 0.4112621881347913</code></pre><p>The parent trajectory will reflect any modifications made in this fashion:</p><pre><code class="language-julia hljs">traj.datavec</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">30-element Vector{Float64}:
   0.0
-  0.8783239303906221
-  0.29603005197168764
+  0.9753608652719112
+  0.8468378838619918
   0.0
-  0.33448581174328695
+  0.4112621881347913
   1.0
-  0.31870877600540704
-  0.9461017415329803
-  0.6498638878568426
-  0.21388858090845375
+  0.1187563363963503
+  0.6953317137568733
+  0.2571551840096664
+  0.19434379326018336
   ⋮
-  0.5939243295615971
-  1.0279799058533807
+ -0.22490098193815966
+  0.040591763921630865
   1.0
-  0.6447459568377855
-  0.06354017323778893
-  0.1766606570748236
- -0.13486837933083648
- -0.7608821442238436
-  1.0</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../params_in_struct/">« Parameters</a><a class="docs-footer-nextpage" href="../../plotting/">Plotting »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.15.0 on <span class="colophon-date" title="Thursday 23 October 2025 00:59">Thursday 23 October 2025</span>. Using Julia version 1.12.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body><div data-docstringscollapsed="true"></div></html>
+  0.6316583833751327
+  0.40924900565412625
+  0.539034752500411
+  0.0915075839027839
+ -0.26147052487208355
+  1.0</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../params_in_struct/">« Parameters</a><a class="docs-footer-nextpage" href="../../plotting/">Plotting »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.15.0 on <span class="colophon-date" title="Thursday 23 October 2025 01:28">Thursday 23 October 2025</span>. Using Julia version 1.12.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body><div data-docstringscollapsed="true"></div></html>
