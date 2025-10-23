@@ -42,3 +42,17 @@ jobs:
             using NamedTrajectories
             DocMeta.setdocmeta!(NamedTrajectories, :DocTestSetup, :(using NamedTrajectories); recursive=true)
             doctest(NamedTrajectories)'
+  
+  dispatch:
+    name: Dispatch PiccoloMultiDocs
+    runs-on: ubuntu-latest
+    needs: docs
+    if: github.ref_type == 'tag' && github.ref_name != ''
+    steps:
+      - name: Dispatch PiccoloMultiDocs workflow
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          repository: harmoniqs/PiccoloMultiDocs.jl
+          event-type: rebuild-docs
+          client-payload: '{"ref": "${{ github.ref }}"}'
