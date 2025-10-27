@@ -69,7 +69,7 @@ end
     x_new = rand(size(x_orig)...)
     u_new = rand(size(u_orig)...)
 
-    idx = rand(1:traj.T)
+    idx = rand(1:traj.N)
 
     traj[idx].x = deepcopy(x_new[:, idx])
     @test traj.x[:, idx] == traj.data[traj.components.x, idx] == traj[idx].x == x_new[:, idx]

@@ -55,7 +55,7 @@ mutable struct NamedTrajectory{
     GN <: NameType,
 }
     datavec::Vector{R}
-    T::Int
+    N::Int
     timestep::Symbol
     dim::Int
     dims::NamedTuple{DNames, DTypes}
@@ -75,14 +75,14 @@ mutable struct NamedTrajectory{
 end
 
 """
-    NamedTrajectory(datavec, components, T)
+    NamedTrajectory(datavec, components, N)
 
 Construct a named trajectory from a data vector, components, and knot points.
 """
 function NamedTrajectory(
     datavec::AbstractVector{R},
     comps::NamedTuple{N, <:ComponentType} where N,
-    T::Int;
+    N::Int;
     timestep::Symbol=:Δt,
     controls::Union{Symbol, NameType}=timestep,
     bounds=NamedTuple(),
@@ -112,7 +112,7 @@ function NamedTrajectory(
     dims_pairs = [(k => length(v)) for (k, v) ∈ pairs(comps)]
     dims = NamedTuple(dims_pairs)
     dim = sum(values(dims), init=0)
-    @assert dim * T == length(datavec) "Data vector length does not match components"
+    @assert dim * N == length(datavec) "Data vector length does not match components"
 
     # process and save bounds
     bounds = get_bounds_from_dims(bounds, dims, dtype=R)
@@ -130,7 +130,7 @@ function NamedTrajectory(
 
     return NamedTrajectory(
         datavec,
-        T,
+        N,
         timestep,
         dim,
         dims,
@@ -162,7 +162,7 @@ function NamedTrajectory(
 )
     # unpack data (promote type)
     data = vcat([val for (key, val) ∈ pairs(comps_data)]...)
-    dim, T = size(data)
+    dim, N = size(data)
 
     # save components of data matrix
     dims_pairs = [(k => size(v, 1)) for (k, v) ∈ pairs(comps_data)]
@@ -187,14 +187,14 @@ function NamedTrajectory(
         R = promote_type(eltype(data), eltype(global_data))
 
         return NamedTrajectory(
-            vec(convert.(R, data)), comps, T; 
+            vec(convert.(R, data)), comps, N; 
             global_data=convert.(R, global_data), 
             global_components=gcomps,
             kwargs...
         )
     else
         # user can specify global data using `global_data`, `global_components`
-        return NamedTrajectory(vec(data), comps, T; kwargs...)
+        return NamedTrajectory(vec(data), comps, N; kwargs...)
     end
 end
 
@@ -237,7 +237,7 @@ function NamedTrajectory(
     traj::NamedTrajectory;
     datavec::AbstractVector{R}=traj.datavec,
     components::NamedTuple{N, <:ComponentType} where N=traj.components,
-    T::Int=traj.T,
+    N::Int=traj.N,
     timestep::Symbol=traj.timestep,
     controls::Union{Symbol, NameType}=traj.control_names,
     bounds=traj.bounds,
@@ -247,13 +247,13 @@ function NamedTrajectory(
     global_data::AbstractVector{R}=traj.global_data,
     global_components::NamedTuple{GN, <:ComponentType} where GN=traj.global_components,
 ) where R <: Real
-    @assert length(datavec) == sum(length.(values(components)), init=0) * T "Data vector length does not match components * T"
+    @assert length(datavec) == sum(length.(values(components)), init=0) * N "Data vector length does not match components * N"
     @assert length(global_data) == sum(length.(values(global_components)), init=0) "Global data length does not match global components"
 
     return NamedTrajectory(
         datavec,
         components,
-        T;
+        N;
         timestep=timestep,
         controls=controls,
         bounds=bounds,
@@ -275,9 +275,9 @@ function NamedTrajectory(
     comps::NamedTuple{N, <:ComponentType} where N;
     kwargs...
 ) where R <: Real
-    T = size(data, 2)
+    N = size(data, 2)
     datavec = vec(data)
-    return NamedTrajectory(datavec, comps, T; kwargs...)
+    return NamedTrajectory(datavec, comps, N; kwargs...)
 end
 
 # ----------------------------------------------------------------------------- #
@@ -388,34 +388,34 @@ end
 
 @testitem "Construct from data matrix and comps" begin
     n = 5
-    T = 10
-    data = randn(n, T)
+    N = 10
+    data = randn(n, N)
     traj = NamedTrajectory(data, (x = 1:3, y=4:4, Δt=5:5))
     @test traj.data ≈ data
     @test traj.timestep == :Δt
     @test traj.dim == n
-    @test traj.T == T
+    @test traj.N == N
     @test traj.names == (:x, :y, :Δt)
 
     traj = NamedTrajectory(data, (x = 1:3, y=4:4, z=5:5), timestep=:z)
     @test traj.data ≈ data
     @test traj.timestep == :z
     @test traj.dim == n
-    @test traj.T == T
+    @test traj.N == N
     @test traj.names == (:x, :y, :z)
 
 end
 
 @testitem "Construct from component data" begin
     # define number of timesteps and timestep
-    T = 10
+    N = 10
     dt = 0.1
 
     dim = 6
     comps_data = (
-        x = rand(3, T),
-        u = rand(2, T),
-        Δt = fill(dt, 1, T),
+        x = rand(3, N),
+        u = rand(2, N),
+        Δt = fill(dt, 1, N),
     )
 
     timestep = :Δt
@@ -437,7 +437,7 @@ end
         controls=control
     )
 
-    @test traj.T == T
+    @test traj.N == N
     @test traj.dim == dim
     @test length(traj.global_data) == global_dim
     @test traj.names == (:x, :u, :Δt)
@@ -455,7 +455,7 @@ end
     # ---
     traj = NamedTrajectory(comps_data, controls=control)
 
-    @test traj.T == T
+    @test traj.N == N
     @test traj.dim == dim
     @test traj.names == (:x, :u, :Δt)
     @test traj.state_names == (:x,)

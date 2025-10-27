@@ -17,7 +17,7 @@ function Makie.convert_arguments(
     P::Makie.PointBased,
     traj::NamedTrajectory,
     comp::Int;
-    indices::AbstractVector{Int}=1:traj.T
+    indices::AbstractVector{Int}=1:traj.N
 )
     times = get_times(traj)[indices]
     positions = map(zip(indices, times)) do (i, t)
@@ -35,7 +35,7 @@ function Makie.convert_arguments(
     traj::NamedTrajectory,
     name::Symbol;
     transform::Union{Nothing, AbstractTransform}=nothing,
-    indices::AbstractVector{Int}=1:traj.T
+    indices::AbstractVector{Int}=1:traj.N
 )
     if !isnothing(transform)
         transform_data = try
@@ -107,7 +107,7 @@ function Makie.plot!(
         markersize = isnothing(P[:marker][]) ? nothing :  P[:markersize]
 
         # Empty indices means all indices
-        indices = isnothing(P[:indices][]) ? range(1, traj.T) : P[:indices][]
+        indices = isnothing(P[:indices][]) ? range(1, traj.N) : P[:indices][]
 
         series!(
             P, traj, name;
@@ -156,7 +156,7 @@ function Makie.plot!(
         markersize = isnothing(P[:marker][]) ? nothing :  P[:markersize]
 
         # Empty indices means all indices
-        indices = isnothing(P[:indices][]) ? range(1, traj.T) : P[:indices][]
+        indices = isnothing(P[:indices][]) ? range(1, traj.N) : P[:indices][]
 
         series!(
             P, traj, input;

@@ -15,18 +15,18 @@ function Base.show(io::IO, Z::NamedTrajectory)
 
     comp_str = join([format(n, Z.components[n]) for n in keys(Z.components)], ", ")
     if isempty(Z.global_data)
-        print(io, "T = ", Z.T, ", (", comp_str, ")")
+        print(io, "N = ", Z.N, ", (", comp_str, ")")
     else
         global_comp_str = join([format(n, Z.global_components[n]) for n in keys(Z.global_components)], ", ")
-        print(io, "T = ", Z.T, ", (", comp_str, "), (", global_comp_str, ")")
+        print(io, "N = ", Z.N, ", (", comp_str, "), (", global_comp_str, ")")
     end
 end
 
 """
-    length(Z::NamedTrajectory) = Z.dim * Z.T + Z.global_dim
+    length(Z::NamedTrajectory) = Z.dim * Z.N + Z.global_dim
 """
 function Base.length(Z::NamedTrajectory)
-    return Z.dim * Z.T + Z.global_dim
+    return Z.dim * Z.N + Z.global_dim
 end
 
 """
@@ -39,9 +39,9 @@ function Base.vec(Z::NamedTrajectory)
 end
 
 """
-    size(Z::NamedTrajectory) = (dim = Z.dim, T = Z.T, global_dim = Z.global_dim)
+    size(Z::NamedTrajectory) = (dim = Z.dim, N = Z.N, global_dim = Z.global_dim)
 """
-Base.size(Z::NamedTrajectory) = (dim = Z.dim, T = Z.T, global_dim = Z.global_dim)
+Base.size(Z::NamedTrajectory) = (dim = Z.dim, N = Z.N, global_dim = Z.global_dim)
 
 """
     copy(::NamedTrajectory)
@@ -51,7 +51,7 @@ Returns a shallow copy of the trajectory.
 function Base.copy(traj::NamedTrajectory)
     NamedTrajectory(
         traj.datavec,
-        traj.T,
+        traj.N,
         traj.timestep,
         traj.dim,
         traj.dims,
@@ -76,35 +76,35 @@ end
 # -------------------------------------------------------------- #
 
 """
-    KnotPoint(Z::NamedTrajectory, t::Int)
+    KnotPoint(Z::NamedTrajectory, k::Int)
 
     # Arguments
     - `Z::NamedTrajectory`: The trajectory from which the KnotPoint is taken.
-    - `t::Int`: The timestep of the KnotPoint.
+    - `k::Int`: The timestep of the KnotPoint.
 """
 function StructKnotPoint.KnotPoint(
     Z::NamedTrajectory,
-    t::Int
+    k::Int
 )
-    @assert 1 ≤ t ≤ Z.T
-    timestep = Z[Z.timestep][t]
-    return KnotPoint(t, view(Z.data, :, t), timestep, Z.components, Z.names, Z.control_names)
+    @assert 1 ≤ k ≤ Z.N
+    timestep = Z[Z.timestep][k]
+    return KnotPoint(k, view(Z.data, :, k), timestep, Z.components, Z.names, Z.control_names)
 end
 
 """
-    getindex(traj, t::Int)::KnotPoint
+    getindex(traj, k::Int)::KnotPoint
 
-Returns the knot point at time `t`.
+Returns the knot point at time `k`.
 """
-Base.getindex(traj::NamedTrajectory, t::Int) = KnotPoint(traj, t)
+Base.getindex(traj::NamedTrajectory, k::Int) = KnotPoint(traj, k)
 
 """
-    getindex(traj, ts::AbstractVector{Int})::Vector{KnotPoint}
+    getindex(traj, ks::AbstractVector{Int})::Vector{KnotPoint}
 
-Returns the knot points at times `ts`.
+Returns the knot points at times `ks`.
 """
-function Base.getindex(traj::NamedTrajectory, ts::AbstractVector{Int})::Vector{KnotPoint}
-    return [traj[t] for t ∈ ts]
+function Base.getindex(traj::NamedTrajectory, ks::AbstractVector{Int})::Vector{KnotPoint}
+    return [traj[k] for k ∈ ks]
 end
 
 """
@@ -112,7 +112,7 @@ end
 
 Returns the final time index of the trajectory.
 """
-Base.lastindex(traj::NamedTrajectory) = traj.T
+Base.lastindex(traj::NamedTrajectory) = traj.N
 
 """
     getindex(traj, symb::Symbol)
@@ -128,7 +128,7 @@ Returns the component of the trajectory with name `symb` (as a view) or the prop
 """
 function Base.getproperty(traj::NamedTrajectory, symb::Symbol)
     if symb == :data
-        return reshape(view(traj.datavec, :), :, traj.T)
+        return reshape(view(traj.datavec, :), :, traj.N)
     elseif symb ∈ fieldnames(NamedTrajectory)
         return getfield(traj, symb)
     elseif symb in traj.names
@@ -210,14 +210,14 @@ Base.:*(traj::NamedTrajectory, α::Float64) = α * NamedTrajectory(traj)
 function Base.:+(traj1::NamedTrajectory, traj2::NamedTrajectory)
     @assert traj1.names == traj2.names
     @assert traj1.dim == traj2.dim
-    @assert traj1.T == traj2.T
+    @assert traj1.N == traj2.N
     return NamedTrajectory(traj1, datavec=traj1.datavec + traj2.datavec)
 end
 
 function Base.:-(traj1::NamedTrajectory, traj2::NamedTrajectory)
     @assert traj1.names == traj2.names
     @assert traj1.dim == traj2.dim
-    @assert traj1.T == traj2.T
+    @assert traj1.N == traj2.N
     return NamedTrajectory(traj1, datavec=traj1.datavec - traj2.datavec)
 end
 

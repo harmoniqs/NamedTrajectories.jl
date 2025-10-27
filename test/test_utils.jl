@@ -1,13 +1,13 @@
 using Random
 
 function get_free_time_traj(;
-    T::Int=5, 
+    N::Int=5, 
     Δt::Symbol=:Δt, 
     x_dim::Int=3, 
     a_dim::Int=2,
     kwargs...
 )
-    free_time_data = (x = rand(x_dim, T), u = rand(a_dim, T), Δt = rand(1, T))
+    free_time_data = (x = rand(x_dim, N), u = rand(a_dim, N), Δt = rand(1, N))
     return NamedTrajectory(free_time_data; timestep=Δt, controls=:u, kwargs...)
 end
 

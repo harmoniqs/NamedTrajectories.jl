@@ -95,7 +95,7 @@ function get_times(traj::NamedTrajectory)
     if traj.timestep isa Symbol
         return cumsum([0.0, vec(traj[traj.timestep])[1:end-1]...])
     else
-        return [0:traj.T-1...] * traj.timestep
+        return [0:traj.N-1...] * traj.timestep
     end
 end
 
@@ -108,7 +108,7 @@ function get_timesteps(traj::NamedTrajectory)
     if traj.timestep isa Symbol
         return vec(traj[traj.timestep])
     else
-        return fill(traj.timestep, traj.T)
+        return fill(traj.timestep, traj.N)
     end
 end
 
@@ -130,15 +130,15 @@ function extend_datavec(
     ext_data::AbstractMatrix{R}
 ) where R <: Real
     @assert size(data, 2) == size(ext_data, 2)
-    T = size(data, 2)
+    N = size(data, 2)
     dim = size(data, 1)
     ext_dim = size(ext_data, 1)
-    new_datavec = zeros((dim + ext_dim) * T)
-    for t in 1:T
+    new_datavec = zeros((dim + ext_dim) * N)
+    for k in 1:N
         # fill original data
-        copyto!(new_datavec, (t - 1) * (dim + ext_dim) + 1, data[:, t], 1, dim)
+        copyto!(new_datavec, (k - 1) * (dim + ext_dim) + 1, data[:, k], 1, dim)
         # fill new data
-        copyto!(new_datavec, (t - 1) * (dim + ext_dim) + dim + 1, ext_data[:, t], 1, ext_dim)
+        copyto!(new_datavec, (k - 1) * (dim + ext_dim) + dim + 1, ext_data[:, k], 1, ext_dim)
     end
     return new_datavec
 end
@@ -183,7 +183,7 @@ function add_components(
         )
     elseif type ∈ [:state, :control, :slack]
         @assert all([data isa AbstractMatrix for data in values(comps_data)])
-        @assert all([size(data, 2) == traj.T for (name, data) in pairs(comps_data)])
+        @assert all([size(data, 2) == traj.N for (name, data) in pairs(comps_data)])
         @assert all([name ∉ keys(traj.components) for (name, data) in pairs(comps_data)])
 
         # update components
@@ -234,8 +234,8 @@ function add_component(
     kwargs...
 )
     if type != :global && data isa AbstractVector
-        @assert length(data) == traj.T "Data length must match trajectory T"
-        comp_data = (; name => reshape(data, 1, traj.T),) 
+        @assert length(data) == traj.N "Data length must match trajectory N"
+        comp_data = (; name => reshape(data, 1, traj.N),) 
     else
         comp_data = (; name => data,)
     end
@@ -308,7 +308,7 @@ Update a component of the trajectory.
 function update!(traj::NamedTrajectory, name::Symbol, data::AbstractMatrix{Float64})
     @assert name ∈ traj.names
     @assert size(data, 1) == traj.dims[name]
-    @assert size(data, 2) == traj.T
+    @assert size(data, 2) == traj.N
     traj.data[traj.components[name], :] = data
     return nothing
 end
@@ -327,8 +327,8 @@ function update!(traj::NamedTrajectory, datavec::AbstractVector{Float64}; type=:
     elseif type == :global
         traj.global_data[:] = datavec
     elseif type == :both
-        traj.datavec[:] = datavec[1:(traj.dim * traj.T)]
-        traj.global_data[:] = datavec[(traj.dim * traj.T + 1):(traj.dim * traj.T + traj.global_dim)]
+        traj.datavec[:] = datavec[1:(traj.dim * traj.N)]
+        traj.global_data[:] = datavec[(traj.dim * traj.N + 1):(traj.dim * traj.N + traj.global_dim)]
     end
     return nothing
 end
@@ -656,19 +656,19 @@ function trajectory_interpolation end
 
 @testitem "add component" begin
     using Random
-    T = 10
+    N = 10
     dim = 5
-    data = randn(dim, T)
+    data = randn(dim, N)
     traj = NamedTrajectory(data, (x = 1:3, y=4:4, z=5:5), timestep=:z)
 
-    traj1 = add_component(traj, :b, randn(T))
+    traj1 = add_component(traj, :b, randn(N))
     @test traj1.data[1:dim, :] == data
 
-    traj2 = add_component(traj, :b, randn(2, T))
+    traj2 = add_component(traj, :b, randn(2, N))
     @test traj2.data[1:dim, :] == data
 
-    da = randn(2, T)
-    db = randn(3, T)
+    da = randn(2, N)
+    db = randn(3, N)
     traj3 = add_components(traj, (a=da, b=db))
     @test traj3.data[1:dim, :] == data
     @test traj3[:a] == da
@@ -682,8 +682,8 @@ function trajectory_interpolation end
 end
 
 @testitem "remove component" begin
-    T = 10
-    data = randn(5, T)
+    N = 10
+    data = randn(5, N)
     traj = NamedTrajectory(data, (x = 1:3, y=4:4, z=5:5), timestep=:z)
     traj1 = remove_component(traj, :y)
     for name in [:x, :z]
@@ -700,8 +700,8 @@ end
     @test traj2.timestep == :y
 
     # remove multiple
-    da = randn(2, T)
-    db = randn(3, T)
+    da = randn(2, N)
+    db = randn(3, N)
     traj3 = add_components(traj, (a=da, b=db))
     @test remove_components(traj3, [:a, :b]) == traj
 
@@ -719,8 +719,8 @@ end
 
 @testitem "update! data" begin
     using Random
-    T = 10
-    data = randn(5, T)
+    N = 10
+    data = randn(5, N)
     global_data = [1.0, 2.0]
     orig_data = copy(data)
     orig_global_data = copy(global_data)
@@ -730,19 +730,19 @@ end
     )
     
     # update data
-    update!(traj, :x, zeros(traj.dims[:x], T))
-    @test traj[:x] == zeros(traj.dims[:x], T)
+    update!(traj, :x, zeros(traj.dims[:x], N))
+    @test traj[:x] == zeros(traj.dims[:x], N)
     @test traj[:y] == orig_data[traj.components[:y], :]
     @test traj[:z] == orig_data[traj.components[:z], :]
 
     # update datavec
-    update!(traj, ones(traj.dim * traj.T))
-    @test traj.datavec == ones(traj.dim * traj.T)
+    update!(traj, ones(traj.dim * traj.N))
+    @test traj.datavec == ones(traj.dim * traj.N)
     @test traj.global_data == orig_global_data
 
     # update global data
     update!(traj, zeros(traj.global_dim), type=:global)
-    @test traj.datavec == ones(traj.dim * traj.T) # stays the same from before
+    @test traj.datavec == ones(traj.dim * traj.N) # stays the same from before
     @test traj.global_data == zeros(traj.global_dim) # changes
 
     # update both
@@ -794,9 +794,9 @@ end
 
 @testitem "merge" begin
     using Random
-    T = 10
-    traj1 = NamedTrajectory(randn(5, T), (x=1:3, y=4:4, z=5:5), timestep=:z)
-    traj2 = NamedTrajectory(randn(5, T), (a=1:3, b=4:4, c=5:5), timestep=:c)
+    N = 10
+    traj1 = NamedTrajectory(randn(5, N), (x=1:3, y=4:4, z=5:5), timestep=:z)
+    traj2 = NamedTrajectory(randn(5, N), (a=1:3, b=4:4, c=5:5), timestep=:c)
     
     traj3 = merge(traj1, traj2)
     @test traj3.timestep == traj2.timestep
@@ -807,8 +807,8 @@ end
     @test issetequal(traj3.names, vcat(traj1.names..., traj2.names...))
 
     # merge x, u, Δt
-    traj1 = rand(NamedTrajectory, T)
-    traj2 = rand(NamedTrajectory, T)
+    traj1 = rand(NamedTrajectory, N)
+    traj2 = rand(NamedTrajectory, N)
     trajs_merged = merge([traj1, traj2]; merge_names=(x=1, u=2, Δt=1), timestep=:Δt)
     @test trajs_merged.timestep == :Δt
     @test issetequal(trajs_merged.names, (:x, :u, :Δt))
@@ -823,7 +823,7 @@ end
     @test_throws ArgumentError merge(traj1, traj2, merge_names=(x=1, u=1, Δt=1), timestep=:dt)
 
     # merge vector
-    trajs = [rand(NamedTrajectory, T) for _ in 1:5]
+    trajs = [rand(NamedTrajectory, N) for _ in 1:5]
     trajs_merged = merge(trajs; merge_names=(x=1, u=2, Δt=1), timestep=:Δt)
     @test trajs_merged isa NamedTrajectory
 
@@ -840,8 +840,8 @@ end
 end
 
 @testitem "suffix tests" begin
-    T = 10
-    data = randn(5, T)
+    N = 10
+    data = randn(5, N)
     traj = NamedTrajectory(
         data, (x = 1:3, y=4:4, z=5:5), timestep=:z, 
         global_data=[1.0, 2.0], global_components=(a = 1:2, ), bounds = (x = 1.0, y = 2.0,)
@@ -860,7 +860,7 @@ end
     @test traj_suffixed.bounds == add_suffix(traj.bounds, suffix)
 
     # test removing suffix
-    traj2 = NamedTrajectory(randn(5, T), (x = 1:3, y=4:4, z=5:5), timestep=:z,)
+    traj2 = NamedTrajectory(randn(5, N), (x = 1:3, y=4:4, z=5:5), timestep=:z,)
     merge_traj = merge(traj_suffixed, traj2)
     # need to choose the right timestep to keep
     traj_unsuffixed = get_suffix(

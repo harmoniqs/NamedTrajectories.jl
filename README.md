@@ -79,14 +79,14 @@ Users can define `NamedTrajectory` types which have lots of useful functionality
 using NamedTrajectories
 
 # define number of timesteps and timestep
-T = 10
+N = 10
 timestep=:dt
 
 # build named tuple of components and data matrices
 components = (
-    x  = rand(3, T),
-    u  = rand(2, T),
-    dt = fill(0.1, T),
+    x  = rand(3, N),
+    u  = rand(2, N),
+    dt = fill(0.1, N),
 )
 
 # build trajectory
@@ -123,28 +123,28 @@ where $\mathbf{Z}$ is a trajectory.
 In more detail, this problem might look something like
 ```math
 \begin{align*}
-\underset{u^1_{1:T}, \dots, u^{n_c}_{1:T}}{\underset{x^1_{1:T}, \cdots, x^{n_s}_{1:T}}{\text{minimize}}} &\quad J \left(x^{1:n_s}_{1:T},u^{1:n_c}_{1:T} \right) \\
-\text{subject to} & \quad f \left(x^{1:n_s}_{1:T},u^{1:n_c}_{1:T} \right) = 0 \\
+\underset{u^1_{1:N}, \dots, u^{n_c}_{1:N}}{\underset{x^1_{1:N}, \cdots, x^{n_s}_{1:N}}{\text{minimize}}} &\quad J \left(x^{1:n_s}_{1:N},u^{1:n_c}_{1:N} \right) \\
+\text{subject to} & \quad f \left(x^{1:n_s}_{1:N},u^{1:n_c}_{1:N} \right) = 0 \\
 & \quad x^i_1 = x^i_{\text{initial}} \\
-& \quad x^i_T = x^i_{\text{final}} \\
+& \quad x^i_N = x^i_{\text{final}} \\
 & \quad u^i_1 = u^i_{\text{initial}} \\
-& \quad u^i_T = u^i_{\text{final}} \\
-& \quad x^i_{\min} < x^i_t < x^i_{\max} \\
-& \quad u^i_{\min} < u^i_t < u^i_{\max} \\
+& \quad u^i_N = u^i_{\text{final}} \\
+& \quad x^i_{\min} < x^i_k < x^i_{\max} \\
+& \quad u^i_{\min} < u^i_k < u^i_{\max} \\
 \end{align*}
 ```
-where $x^i_t$ is the $i$ th state variable and $u^i_t$ is the $i$ th control variable at timestep $t$; state and control variables can be of arbitrary dimension. The function $f$ is a nonlinear constraint function and $J$ is the objective function. These problems can have an arbitrary number of state ($n_s$) and control ($n_c$) variables, and the number of timesteps $T$ can vary as well.
+where $x^i_k$ is the $i$ th state variable and $u^i_k$ is the $i$ th control variable at knot point $k$; state and control variables can be of arbitrary dimension. The function $f$ is a nonlinear constraint function and $J$ is the objective function. These problems can have an arbitrary number of state ($n_s$) and control ($n_c$) variables, and the number of knot points $N$ can vary as well.
 
 It is common practice in trajectory optimization to bundle all of the state and control variables together into a single *knot point*
 
 ```math
-z_t = \begin{pmatrix}
-    x^1_t \\
+z_k = \begin{pmatrix}
+    x^1_k \\
     \vdots \\
-    x^{n_s}_t \\
-    u^1_t \\
+    x^{n_s}_k \\
+    u^1_k \\
     \vdots \\
-    u^{n_c}_t
+    u^{n_c}_k
   \end{pmatrix}.
 ```
 
@@ -152,11 +152,11 @@ The trajectory optimization problem can then be succinctly written as
 
 ```math
 \begin{align*}
-\underset{z_{1:T}}{\text{minimize}} &\quad J \left(z_{1:T} \right) \\
-\text{subject to} & \quad f \left(z_{1:T} \right) = 0 \\
+\underset{z_{1:N}}{\text{minimize}} &\quad J \left(z_{1:N} \right) \\
+\text{subject to} & \quad f \left(z_{1:N} \right) = 0 \\
 & \quad z_1 = z_{\text{initial}} \\
-& \quad z_T = z_{\text{final}} \\
-& \quad z_{\min} < z_t < z_{\max} \\
+& \quad z_N = z_{\text{final}} \\
+& \quad z_{\min} < z_k < z_{\max} \\
 \end{align*}
 ```
 
