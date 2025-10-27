@@ -17,10 +17,10 @@ using NamedTrajectories
 
 #=
 ```math
-\qty{z_t = \mqty(x_t \\ u_t)}_{t=1:T}
+\qty{z_k = \mqty(x_k \\ u_k)}_{k=1:N}
 ```
 
-where $x_t$ is the state and $u_t$ is the control at a time indexed by $t$. Together $z_t$ is referred to as a *knot point* and a `NamedTrajectory` essentially just stores a collection of knot points and makes it easy to access the state and control variables.
+where $x_k$ is the state and $u_k$ is the control at a time indexed by $k$. Together $z_k$ is referred to as a *knot point* and a `NamedTrajectory` essentially just stores a collection of knot points and makes it easy to access the state and control variables.
 
 ## Creating a variable-timestep `NamedTrajectory`
 
@@ -28,14 +28,14 @@ Here we will create a `NamedTrajectory` with a variable timestep.
 =#
 
 ## define the number of timesteps
-T = 10
+N = 10
 Δt = 0.1
 
 ## define the knot point data as a NamedTuple of matrices
 data = (
-    x = rand(3, T),
-    u = rand(2, T),
-    Δt = fill(Δt, T),
+    x = rand(3, N),
+    u = rand(2, N),
+    Δt = fill(Δt, N),
 )
 
 ## we must specify a timestep and control variable for the NamedTrajectory.
@@ -56,13 +56,13 @@ In many settings we will want to specify the problem data of our `NamedTrajector
 =#
 
 ## define the number of timesteps
-T = 10
+N = 10
 
 ## define the knot point data as a NamedTuple of matrices
 data = (
-    x = rand(3, T),
-    u = rand(2, T),
-    Δt = rand(T),
+    x = rand(3, N),
+    u = rand(2, N),
+    Δt = rand(N),
 )
 
 ## define initial values
@@ -151,7 +151,7 @@ traj.dims
 
 # returns the dimensions of the variables stored in the trajectory.
 
-traj.T
+traj.N
 
 # returns the number of knot points in the trajectory.
 

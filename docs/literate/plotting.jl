@@ -36,15 +36,15 @@ using CairoMakie
 using NamedTrajectories
 
 ## define the number timestamps
-T = 100
+N = 100
 Δt = 0.1
-ts = [0:T-1...] * Δt
+ts = [0:N-1...] * Δt
 
 ## define sinusoidal state trajectories
-X = zeros(3, T)
-X[1, :] = sin.(3 * 2π * ts / (2 * (T - 1) * Δt))
-X[2, :] = -sin.(5 * 2π * ts / (2 * (T - 1) * Δt))
-X[3, :] = sin.(9 * 2π * ts / (2 * (T - 1) * Δt))
+X = zeros(3, N)
+X[1, :] = sin.(3 * 2π * ts / (2 * (N - 1) * Δt))
+X[2, :] = -sin.(5 * 2π * ts / (2 * (N - 1) * Δt))
+X[3, :] = sin.(9 * 2π * ts / (2 * (N - 1) * Δt))
 
 ## define gaussian shaped controls
 U = stack(
@@ -62,7 +62,7 @@ traj = NamedTrajectory(
         x=X,
         u=U,
         v=V,
-        Δt=fill(Δt, T),
+        Δt=fill(Δt, N),
     );
     timestep=:Δt,
     controls=(:u, :v)

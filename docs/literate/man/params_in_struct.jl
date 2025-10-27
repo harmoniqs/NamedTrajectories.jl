@@ -4,14 +4,14 @@
 using NamedTrajectories
 
 # First we need to define number of timesteps and timestep
-T = 10
+N = 10
 dt = 0.1
 
 # then build named tuple of components and data matrices.
 components = (
-    x = rand(3, T),
-    u = rand(2, T),
-    Δt = fill(dt, 1, T),
+    x = rand(3, N),
+    u = rand(2, N),
+    Δt = fill(dt, 1, N),
 )
 
 # we must specify a timestep and control variable for the trajectory.

@@ -113,16 +113,16 @@ println(traj.components)
 # For instance, the indices of a given component at a given knot point are given as follows:
 
 idx = 1 # x
-t = 3
-slice = traj.datavec[((t - 1) * traj.T) .+ traj.components[traj.names[idx]]]
-println(slice == traj[t].x == traj.x[:, t])
+k = 3
+slice = traj.datavec[((k - 1) * traj.N) .+ traj.components[traj.names[idx]]]
+println(slice == traj[k].x == traj.x[:, k])
 
 # More generally, the indices of a given component across all knot points are given as follows:
 
 idx = 1 # x
-println([((k - 1) * traj.dim) .+ getproperty(traj.components, traj.names[idx]) for k in 1:traj.T])
+println([((k - 1) * traj.dim) .+ getproperty(traj.components, traj.names[idx]) for k in 1:traj.N])
 idx = 2 # u
-println([((k - 1) * traj.dim) .+ getproperty(traj.components, traj.names[idx]) for k in 1:traj.T])
+println([((k - 1) * traj.dim) .+ getproperty(traj.components, traj.names[idx]) for k in 1:traj.N])
 
 
 # ### Writability
@@ -154,7 +154,7 @@ fieldnames(NamedTrajectory)
 #=
 TODO:
 - Prevent this issue by catching attempts to set sensitive fields in `Base.setproperty!(::NamedTrajectory, ::Symbol, ::Any)` (`datavec` and `data` are the primary concern in this regard; however, issuing a warning of some kind may be appropriate).
-    - Particularly because it is confusing that `traj.datavec = zeros(length(datavec))` is "discouraged", while `traj.x = zeros(traj.dims.x, traj.T)` and `traj[1].x = zeros(traj.dims.x)` are both valid.
+    - Particularly because it is confusing that `traj.datavec = zeros(length(datavec))` is "discouraged", while `traj.x = zeros(traj.dims.x, traj.N)` and `traj[1].x = zeros(traj.dims.x)` are both valid.
 =#
 
 # #### Components and Knot Points
@@ -167,7 +167,7 @@ traj.x
 
 # Components are also writable via `setproperty!`:
 
-traj.x = rand(traj.dims.x, traj.T)
+traj.x = rand(traj.dims.x, traj.N)
 traj.x
 
 # or may be modified directly:
