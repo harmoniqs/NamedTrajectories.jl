@@ -52,14 +52,14 @@
 </div><h1 id="NamedTrajectories.jl"><a class="docs-heading-anchor" href="#NamedTrajectories.jl">NamedTrajectories.jl</a><a id="NamedTrajectories.jl-1"></a><a class="docs-heading-anchor-permalink" href="#NamedTrajectories.jl" title="Permalink"></a></h1><p><strong>NamedTrajectories.jl</strong> is a package for working with trajectories of named variables. It is designed to be used with the <a href="https://github.com/harmoniqs/Piccolo.jl">Piccolo.jl</a> ecosystem.</p><h2 id="Installation"><a class="docs-heading-anchor" href="#Installation">Installation</a><a id="Installation-1"></a><a class="docs-heading-anchor-permalink" href="#Installation" title="Permalink"></a></h2><p>NamedTrajectories.jl is registered! Install in the REPL by entering pkg mode with <code>]</code> and then running</p><pre><code class="language-julia hljs">pkg&gt; add NamedTrajectories</code></pre><h3 id="Features"><a class="docs-heading-anchor" href="#Features">Features</a><a id="Features-1"></a><a class="docs-heading-anchor-permalink" href="#Features" title="Permalink"></a></h3><ul><li>Abstract away messy indexing and vectorization details required for interfacing with numerical solvers.</li><li>Easily handle multiple trajectories with different names, e.g. various states and controls.</li><li>Simple plotting of trajectories.</li><li>Provide a variety of helpful methods for common tasks.</li></ul><h2 id="Basic-Usage"><a class="docs-heading-anchor" href="#Basic-Usage">Basic Usage</a><a id="Basic-Usage-1"></a><a class="docs-heading-anchor-permalink" href="#Basic-Usage" title="Permalink"></a></h2><p>Users can define <code>NamedTrajectory</code> types which have lots of useful functionality. For example, you can access the data by name or index.  In the case of an index, a <code>KnotPoint</code> is returned which contains the data for that timestep.</p><pre><code class="language-julia hljs">using NamedTrajectories
 
 # define number of timesteps and timestep
-T = 10
+N = 10
 timestep=:dt
 
 # build named tuple of components and data matrices
 components = (
-    x  = rand(3, T),
-    u  = rand(2, T),
-    dt = fill(0.1, T),
+    x  = rand(3, N),
+    u  = rand(2, N),
+    dt = fill(0.1, N),
 )
 
 # build trajectory
@@ -82,30 +82,30 @@ traj.names # returns names as tuple (:x, :u)</code></pre><h2 id="Motivation"><a 
     \nonumber \text{s.t.}\qquad &amp; \mathbf{f}(\mathbf{Z}) = 0 \\
     \nonumber &amp; \mathbf{g}(\mathbf{Z}) \le 0
 \end{aligned}\]</p><p>where <span>$\mathbf{Z}$</span> is a trajectory.</p><p>In more detail, this problem might look something like</p><p class="math-container">\[\begin{align*}
-\underset{u^1_{1:T}, \dots, u^{n_c}_{1:T}}{\underset{x^1_{1:T}, \cdots, x^{n_s}_{1:T}}{\text{minimize}}} &amp;\quad J \left(x^{1:n_s}_{1:T},u^{1:n_c}_{1:T} \right) \\
-\text{subject to} &amp; \quad f \left(x^{1:n_s}_{1:T},u^{1:n_c}_{1:T} \right) = 0 \\
+\underset{u^1_{1:N}, \dots, u^{n_c}_{1:N}}{\underset{x^1_{1:N}, \cdots, x^{n_s}_{1:N}}{\text{minimize}}} &amp;\quad J \left(x^{1:n_s}_{1:N},u^{1:n_c}_{1:N} \right) \\
+\text{subject to} &amp; \quad f \left(x^{1:n_s}_{1:N},u^{1:n_c}_{1:N} \right) = 0 \\
 &amp; \quad x^i_1 = x^i_{\text{initial}} \\
-&amp; \quad x^i_T = x^i_{\text{final}} \\
+&amp; \quad x^i_N = x^i_{\text{final}} \\
 &amp; \quad u^i_1 = u^i_{\text{initial}} \\
-&amp; \quad u^i_T = u^i_{\text{final}} \\
-&amp; \quad x^i_{\min} &lt; x^i_t &lt; x^i_{\max} \\
-&amp; \quad u^i_{\min} &lt; u^i_t &lt; u^i_{\max} \\
-\end{align*}\]</p><p>where <span>$x^i_t$</span> is the <span>$i$</span> th state variable and <span>$u^i_t$</span> is the <span>$i$</span> th control variable at timestep <span>$t$</span>; state and control variables can be of arbitrary dimension. The function <span>$f$</span> is a nonlinear constraint function and <span>$J$</span> is the objective function. These problems can have an arbitrary number of state (<span>$n_s$</span>) and control (<span>$n_c$</span>) variables, and the number of timesteps <span>$T$</span> can vary as well.</p><p>It is common practice in trajectory optimization to bundle all of the state and control variables together into a single <em>knot point</em></p><p class="math-container">\[z_t = \begin{pmatrix}
-    x^1_t \\
+&amp; \quad u^i_N = u^i_{\text{final}} \\
+&amp; \quad x^i_{\min} &lt; x^i_k &lt; x^i_{\max} \\
+&amp; \quad u^i_{\min} &lt; u^i_k &lt; u^i_{\max} \\
+\end{align*}\]</p><p>where <span>$x^i_k$</span> is the <span>$i$</span> th state variable and <span>$u^i_k$</span> is the <span>$i$</span> th control variable at knot point <span>$k$</span>; state and control variables can be of arbitrary dimension. The function <span>$f$</span> is a nonlinear constraint function and <span>$J$</span> is the objective function. These problems can have an arbitrary number of state (<span>$n_s$</span>) and control (<span>$n_c$</span>) variables, and the number of knot points <span>$N$</span> can vary as well.</p><p>It is common practice in trajectory optimization to bundle all of the state and control variables together into a single <em>knot point</em></p><p class="math-container">\[z_k = \begin{pmatrix}
+    x^1_k \\
     \vdots \\
-    x^{n_s}_t \\
-    u^1_t \\
+    x^{n_s}_k \\
+    u^1_k \\
     \vdots \\
-    u^{n_c}_t
+    u^{n_c}_k
   \end{pmatrix}.\]</p><p>The trajectory optimization problem can then be succinctly written as</p><p class="math-container">\[\begin{align*}
-\underset{z_{1:T}}{\text{minimize}} &amp;\quad J \left(z_{1:T} \right) \\
-\text{subject to} &amp; \quad f \left(z_{1:T} \right) = 0 \\
+\underset{z_{1:N}}{\text{minimize}} &amp;\quad J \left(z_{1:N} \right) \\
+\text{subject to} &amp; \quad f \left(z_{1:N} \right) = 0 \\
 &amp; \quad z_1 = z_{\text{initial}} \\
-&amp; \quad z_T = z_{\text{final}} \\
-&amp; \quad z_{\min} &lt; z_t &lt; z_{\max} \\
+&amp; \quad z_N = z_{\text{final}} \\
+&amp; \quad z_{\min} &lt; z_k &lt; z_{\max} \\
 \end{align*}\]</p><p>The <code>NamedTrajectories</code> package provides a <code>NamedTrajectory</code> type which abstracts away the messy indexing and vectorization details required for interfacing with numerical solvers.  It also provides a variety of helpful methods for common tasks.  For example, you can access the data by name or index.  In the case of an index, a <code>KnotPoint</code> is returned which contains the data for that timestep.</p><h3 id="Building-Documentation"><a class="docs-heading-anchor" href="#Building-Documentation">Building Documentation</a><a id="Building-Documentation-1"></a><a class="docs-heading-anchor-permalink" href="#Building-Documentation" title="Permalink"></a></h3><p>This package uses a Documenter config that is shared with many of our other repositories. To build the docs, you will need to run the docs setup script to clone and pull down the utility.</p><pre><code class="nohighlight hljs"># first time only
 ./docs/get_docs_utils.sh   # or ./get_docs_utils.sh if cwd is in ./docs/</code></pre><p>To build the docs pages:</p><pre><code class="nohighlight hljs">julia --project=docs docs/make.jl</code></pre><p>or editing the docs live:</p><pre><code class="nohighlight hljs">julia --project=docs
 &gt; using LiveServer, NamedTrajectories, Revise
 &gt; servedocs(literate_dir=&quot;docs/literate&quot;, skip_dirs=[&quot;docs/src/generated&quot;, &quot;docs/src/assets/&quot;], skip_files=[&quot;docs/src/index.md&quot;])</code></pre><blockquote><p><strong>Note:</strong> <code>servedocs</code> needs to watch a subset of the files in the <code>docs/</code> folder. If it watches files that are generated on a docs build/re-build, <code>servedocs</code> will continuously try to re-serve the pages.</p><p>To prevent this, ensure all generated files are included in the skip dirs or skip files args for <code>servedocs</code>.</p></blockquote><p>For example, if we forget index.md like so:</p><pre><code class="nohighlight hljs">julia --project=docs
 &gt; using LiveServer, Piccolo, Revise
-&gt; servedocs(literate_dir=&quot;docs/literate&quot;, skip_dirs=[&quot;docs/src/generated&quot;, &quot;docs/src/assets/&quot;])</code></pre><p>it will not build and serve.</p><hr/><p><em>&quot;It seems that perfection is attained not when there is nothing more to add, but when there is nothing more to take away.&quot; - Antoine de Saint-Exupéry</em></p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="generated/quickstart/">Quickstart Guide »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.15.0 on <span class="colophon-date" title="Thursday 23 October 2025 01:28">Thursday 23 October 2025</span>. Using Julia version 1.12.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+&gt; servedocs(literate_dir=&quot;docs/literate&quot;, skip_dirs=[&quot;docs/src/generated&quot;, &quot;docs/src/assets/&quot;])</code></pre><p>it will not build and serve.</p><hr/><p><em>&quot;It seems that perfection is attained not when there is nothing more to add, but when there is nothing more to take away.&quot; - Antoine de Saint-Exupéry</em></p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="generated/quickstart/">Quickstart Guide »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.15.0 on <span class="colophon-date" title="Monday 27 October 2025 03:03">Monday 27 October 2025</span>. Using Julia version 1.12.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
