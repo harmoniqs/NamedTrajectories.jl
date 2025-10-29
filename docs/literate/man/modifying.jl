@@ -103,7 +103,7 @@ traj.data
 
 # ### Indexing
 
-# The `data` matrix is of dimension `(traj.dim, traj.T)`, where `length(traj.names) == traj.dim`
+# The `data` matrix is of dimension `(traj.dim, traj.N)`, where `length(traj.names) == traj.dim`
 
 # The nth component's indices are given by `traj.components[traj.names[n]]`
 
