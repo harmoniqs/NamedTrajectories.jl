@@ -13,7 +13,7 @@ struct KnotPoint{
     N <: Tuple{Vararg{Symbol}},
     CN <: Tuple{Vararg{Symbol}}
 }
-    t::Int
+    k::Int
     data::AbstractVector{R}
     timestep::R
     components::NamedTuple{CNames, CTypes}

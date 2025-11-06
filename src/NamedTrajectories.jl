@@ -10,6 +10,9 @@ include("struct_named_trajectory.jl")
 include("struct_knot_point.jl")
 @reexport using .StructKnotPoint
 
+include("utils.jl")
+@reexport using .Utils
+
 include("base_named_trajectory.jl")
 @reexport using .BaseNamedTrajectory
 
@@ -21,9 +24,6 @@ include("random_trajectories.jl")
 
 include("methods_knot_point.jl")
 @reexport using .MethodsKnotPoint
-
-include("utils.jl")
-@reexport using .Utils
 
 include("plotting.jl")
 @reexport using .Plotting
