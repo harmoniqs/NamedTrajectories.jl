@@ -131,7 +131,15 @@ function Makie.plot!(
     kwargs...
 )
     # Manually extract and forward attributes
-    attrs = Dict(k => to_value(v) for (k, v) in P.attributes)
+    attrs = (; 
+        color = P[:color][],
+        linestyle = P[:linestyle],
+        linewidth = P[:linewidth],
+        marker = P[:marker],
+        markersize = P[:markersize],
+        merge = P[:merge][],
+        indices = P[:indices][]
+    )
     plot!(P, P[:traj], P[:input_name], L"%$(P[:input_name][])"; merge(attrs, kwargs)...)
     return P
 end
@@ -170,7 +178,7 @@ function Makie.plot!(
             indices = indices,
             kwargs...
         )
-        
+
     end
     return P
 end
@@ -181,8 +189,15 @@ function Makie.plot!(
     kwargs...
 )   
     # Manually extract and forward attributes
-    attrs = Dict(k => to_value(v) for (k, v) in P.attributes)
-    # transform is arg 3
+    attrs = (; 
+        color = P[:color][],
+        linestyle = P[:linestyle],
+        linewidth = P[:linewidth],
+        marker = P[:marker],
+        markersize = P[:markersize],
+        merge = P[:merge][],
+        indices = P[:indices][]
+    )
     plot!(P, P[:traj], P[:input_name], L"T(%$(P[:input_name][]))", P[3]; merge(attrs, kwargs)...)
     return P
 end
