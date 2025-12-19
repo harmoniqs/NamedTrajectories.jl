@@ -54,7 +54,7 @@ mutable struct NamedTrajectory{
     GCNames, GCTypes <: ComponentType,
     GN <: NameType,
 }
-    datavec::Vector{R}
+    datavec::AbstractVector{R}
     N::Int
     timestep::Symbol
     dim::Int
@@ -67,7 +67,7 @@ mutable struct NamedTrajectory{
     names::N
     state_names::SN
     control_names::CN
-    global_data::Vector{R}
+    global_data::AbstractVector{R}
     global_dim::Int
     global_dims::NamedTuple{GDNames, GDTypes}
     global_components::NamedTuple{GCNames, GCTypes}
@@ -250,8 +250,13 @@ function NamedTrajectory(
     @assert length(datavec) == sum(length.(values(components)), init=0) * N "Data vector length does not match components * N"
     @assert length(global_data) == sum(length.(values(global_components)), init=0) "Global data length does not match global components"
 
+    # Only collect lazy arrays and other non-strided AbstractVectors
+    # Vector, SubArray, and other strided arrays can be used directly without copying
+    datavec_concrete = (datavec isa Vector || datavec isa SubArray) ? datavec : collect(datavec)
+    global_data_concrete = (global_data isa Vector || global_data isa SubArray) ? global_data : collect(global_data)
+
     return NamedTrajectory(
-        datavec,
+        datavec_concrete,
         components,
         N;
         timestep=timestep,
@@ -260,7 +265,7 @@ function NamedTrajectory(
         initial=initial,
         final=final,
         goal=goal,
-        global_data=global_data,
+        global_data=global_data_concrete,
         global_components=global_components,
     )
 end
@@ -490,6 +495,40 @@ end
     @test traj.bounds.z == (fill(-zval, traj.dims.z), fill(zval, traj.dims.z))
     @test traj.bounds.w == (-wval, wval)
     @test :Δt ∉ traj.bounds
+end
+
+@testitem "Test AbstractVector datavec handling" begin
+    # Create a base trajectory
+    N = 10
+    x_dim = 2
+    u_dim = 1
+    
+    base_traj = NamedTrajectory(
+        (
+            x = randn(x_dim, N),
+            u = randn(u_dim, N),
+            Δt = fill(0.1, N),
+        );
+        controls=:u,
+        timestep=:Δt,
+    )
+    
+    # Test 1: Regular Vector - should not reallocate
+    vec1 = copy(base_traj.datavec)
+    traj1 = NamedTrajectory(base_traj; datavec=vec1)
+    @test traj1.datavec === vec1  # Same object, no allocation
+    
+    # Test 2: View (SubArray) - can be stored directly without copying
+    parent_vec = vcat(base_traj.datavec, randn(10))
+    view_vec = view(parent_vec, 1:length(base_traj.datavec))
+    traj2 = NamedTrajectory(base_traj; datavec=view_vec)
+    @test traj2.datavec isa SubArray
+    @test traj2.datavec === view_vec  # Same view, no copy
+    @test parent(traj2.datavec) === parent_vec  # Still referencing same parent
+    
+    # Test 3: Values should match regardless of input type
+    @test traj1.x == base_traj.x
+    @test traj2.x == base_traj.x
 end
 
 end

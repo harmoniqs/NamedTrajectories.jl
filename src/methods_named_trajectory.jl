@@ -23,14 +23,18 @@ export add_suffix
 export remove_suffix
 export get_suffix
 
+export add_control_derivatives
+
 # extensions 
 export trajectory_interpolation
 
 using TestItems
 
 using ..StructNamedTrajectory
+using ..StructNamedTrajectory: VectorBound
 using ..StructKnotPoint
 using ..BaseNamedTrajectory
+using ..Utils
 
 
 # -------------------------------------------------------------- #
@@ -653,6 +657,401 @@ end
 function trajectory_interpolation end
 
 # =========================================================================== #
+# Add control derivatives
+# =========================================================================== #
+
+"""
+    add_control_derivatives(
+        traj::NamedTrajectory,
+        n_derivatives::Int;
+        control_name::Symbol=:u,
+        derivative_bounds::Union{Nothing, Tuple{Vararg{VectorBound}}}=nothing,
+        zero_initial_and_final_derivative::Bool=false,
+        random_init::Bool=false,
+        drive_derivative_σ::Float64=0.1
+    )
+
+Add control derivatives to an existing trajectory.
+
+Takes an existing `NamedTrajectory` with a control variable and adds its time derivatives
+(e.g., u̇, ü) as new trajectory components. Can either compute derivatives using finite 
+differences or initialize them randomly.
+
+# Arguments
+- `traj::NamedTrajectory`: Existing trajectory with control variable
+- `n_derivatives::Int`: Number of derivatives to add (1 for u̇, 2 for u̇ and ü, etc.)
+
+# Keyword Arguments
+- `control_name::Symbol=:u`: Name of the control variable in the trajectory
+- `derivative_bounds::Union{Nothing, Tuple{Vararg{VectorBound}}}=nothing`: Bounds for each derivative level (du, ddu, ...)
+- `zero_initial_and_final_derivative::Bool=false`: Enforce zero first derivative at boundaries
+- `random_init::Bool=false`: If true, randomly initialize derivatives instead of computing via finite differences
+- `drive_derivative_σ::Float64=0.1`: Standard deviation for random derivative initialization (only used if random_init=true)
+
+# Returns
+- `NamedTrajectory`: New trajectory with control derivatives added
+
+# Examples
+```julia
+# Add first and second derivatives computed via finite differences
+traj_smooth = add_control_derivatives(
+    traj, 
+    2; 
+    derivative_bounds=(([-2.0, -2.0], [2.0, 2.0]), ([-5.0, -5.0], [5.0, 5.0]))
+)
+
+# Add derivative with zero boundary conditions
+traj_smooth = add_control_derivatives(
+    traj,
+    1;
+    zero_initial_and_final_derivative=true
+)
+
+# Randomly initialize derivatives
+traj_random = add_control_derivatives(
+    traj,
+    2;
+    random_init=true,
+    drive_derivative_σ=0.05
+)
+```
+
+# Notes
+- The original trajectory is not modified; a new trajectory is returned
+- When `random_init=false`, derivatives are computed using finite differences: du/dt ≈ Δu/Δt
+- When `random_init=true`, derivatives are sampled from N(0, drive_derivative_σ²)
+- The penultimate point of each derivative is adjusted to ensure smooth transitions (finite difference mode only)
+- New derivative components become part of the trajectory controls
+"""
+function add_control_derivatives(
+    traj::NamedTrajectory,
+    n_derivatives::Int;
+    control_name::Symbol=:u,
+    derivative_bounds::Union{Nothing, Tuple{Vararg{VectorBound}}}=nothing,
+    zero_initial_and_final_derivative::Bool=false,
+    random_init::Bool=false,
+    drive_derivative_σ::Float64=0.1
+)
+    @assert control_name in keys(traj.components) "Control '$control_name' not found in trajectory"
+    @assert n_derivatives > 0 "n_derivatives must be positive"
+    
+    if !isnothing(derivative_bounds)
+        @assert length(derivative_bounds) == n_derivatives "derivative_bounds must have $n_derivatives elements"
+    end
+
+    # Get control data and timestep (collect to ensure we have concrete arrays, not views)
+    u = Matrix(traj[control_name])
+    Δt = traj[traj.timestep]
+    T = size(u, 2)
+    n_drives = size(u, 1)
+    
+    # Generate derivative names
+    derivative_names = Tuple([
+        Symbol("d"^i * string(control_name)) for i = 1:n_derivatives
+    ])
+    
+    # Compute or randomly initialize control derivatives
+    control_data = Matrix{Float64}[u]
+    
+    if random_init
+        # Random initialization mode
+        for _ in 1:n_derivatives
+            push!(control_data, randn(n_drives, T) * drive_derivative_σ)
+        end
+    else
+        # Finite difference mode
+        for n in 1:n_derivatives
+            # Compute next derivative
+            push!(control_data, Utils.derivative(control_data[end], Δt))
+            
+            # Adjust penultimate point to avoid constraint violations
+            # We adjust the PREVIOUS derivative level using the current one
+            if n > 1
+                control_data[end-1][:, end] =
+                    control_data[end-1][:, end-1] + Δt[end-1] * control_data[end][:, end-1]
+            end
+        end
+    end
+    
+    # Build new components data by extracting existing data and adding derivatives
+    existing_comp_names = Tuple(keys(traj.components))
+    existing_comp_data = [Matrix(traj[name]) for name in existing_comp_names]
+    
+    # Create vectors for new component names and data  
+    all_comp_names = (existing_comp_names..., derivative_names...)
+    all_comp_data = [existing_comp_data..., control_data[2:end]...]  # Skip u since it's already in existing
+    
+    # Create NamedTuple of component data for the constructor
+    comps_data = NamedTuple{all_comp_names}(Tuple(all_comp_data))
+    
+    # Extract global component data (if any)
+    if traj.global_components isa NamedTuple && !isempty(traj.global_components)
+        global_comp_names = keys(traj.global_components)
+        global_comp_data = [Vector(traj.global_data[traj.global_components[name]]) for name in global_comp_names]
+        global_comps_data = NamedTuple{Tuple(global_comp_names)}(Tuple(global_comp_data))
+    else
+        global_comps_data = NamedTuple()
+    end
+    
+    # Update controls tuple to include derivatives
+    new_controls = (traj.control_names..., derivative_names...)
+    
+    # Update bounds if provided
+    new_bounds = traj.bounds
+    if !isnothing(derivative_bounds)
+        for (i, name) in enumerate(derivative_names)
+            new_bounds = merge(new_bounds, (; name => derivative_bounds[i]))
+        end
+    end
+    
+    # Update initial/final constraints for zero derivatives at boundaries
+    new_initial = traj.initial
+    new_final = traj.final
+    
+    if zero_initial_and_final_derivative && n_derivatives > 0
+        first_derivative = derivative_names[1]
+        new_initial = merge(new_initial, (; first_derivative => zeros(n_drives)))
+        new_final = merge(new_final, (; first_derivative => zeros(n_drives)))
+    end
+    
+    # Create new trajectory with derivatives
+    return NamedTrajectory(
+        comps_data,
+        global_comps_data;
+        controls=new_controls,
+        timestep=traj.timestep,
+        bounds=new_bounds,
+        initial=new_initial,
+        final=new_final,
+        goal=traj.goal
+    )
+end
+
+# =========================================================================== #
+
+@testitem "add_control_derivatives basic functionality" begin
+    # Create a simple trajectory with controls
+    T = 10
+    n_drives = 2
+    u = hcat(
+        zeros(n_drives),
+        randn(n_drives, T - 2) * 0.1,
+        zeros(n_drives)
+    )
+    Δt = fill(0.1, T)
+    Ũ⃗ = randn(8, T)  # Random unitary iso-vec
+    
+    traj = NamedTrajectory(
+        (Ũ⃗ = Ũ⃗, u = u, Δt = reshape(Δt, 1, T));
+        controls = (:u, :Δt),
+        timestep = :Δt,
+        bounds = (u = ([-1.0, -1.0], [1.0, 1.0]),),
+        initial = (Ũ⃗ = Ũ⃗[:, 1], u = zeros(n_drives)),
+        final = (u = zeros(n_drives),),
+        goal = (Ũ⃗ = Ũ⃗[:, end],)
+    )
+    
+    # Add one derivative
+    traj_with_du = add_control_derivatives(traj, 1)
+    
+    @test traj_with_du isa NamedTrajectory
+    @test :du in keys(traj_with_du.components)
+    @test size(traj_with_du[:du]) == (n_drives, T)
+    @test :du in traj_with_du.control_names
+    
+    # Verify original trajectory is unchanged
+    @test !(:du in keys(traj.components))
+    
+    # Add two derivatives
+    traj_with_ddu = add_control_derivatives(traj, 2)
+    
+    @test :du in keys(traj_with_ddu.components)
+    @test :ddu in keys(traj_with_ddu.components)
+    @test size(traj_with_ddu[:du]) == (n_drives, T)
+    @test size(traj_with_ddu[:ddu]) == (n_drives, T)
+    @test :du in traj_with_ddu.control_names
+    @test :ddu in traj_with_ddu.control_names
+end
+
+@testitem "add_control_derivatives with bounds" begin
+    T = 10
+    n_drives = 2
+    u = randn(n_drives, T) * 0.1
+    Δt = fill(0.1, T)
+    Ũ⃗ = randn(8, T)
+    
+    traj = NamedTrajectory(
+        (Ũ⃗ = Ũ⃗, u = u, Δt = reshape(Δt, 1, T));
+        controls = (:u, :Δt),
+        timestep = :Δt,
+        bounds = (u = ([-1.0, -1.0], [1.0, 1.0]),),
+        initial = (Ũ⃗ = Ũ⃗[:, 1],),
+        goal = (Ũ⃗ = Ũ⃗[:, end],)
+    )
+    
+    # Add derivatives with bounds
+    du_bounds = ([-0.5, -0.5], [0.5, 0.5])
+    ddu_bounds = ([-1.0, -1.0], [1.0, 1.0])
+    
+    traj_bounded = add_control_derivatives(
+        traj, 
+        2;
+        derivative_bounds=(du_bounds, ddu_bounds)
+    )
+    
+    @test traj_bounded isa NamedTrajectory
+    @test haskey(traj_bounded.bounds, :du)
+    @test haskey(traj_bounded.bounds, :ddu)
+    @test traj_bounded.bounds[:du] == du_bounds
+    @test traj_bounded.bounds[:ddu] == ddu_bounds
+    
+    # Original bounds should be preserved
+    @test haskey(traj_bounded.bounds, :u)
+    @test traj_bounded.bounds[:u] == traj.bounds[:u]
+end
+
+@testitem "add_control_derivatives with zero boundary conditions" begin
+    T = 10
+    n_drives = 2
+    u = randn(n_drives, T) * 0.1
+    Δt = fill(0.1, T)
+    Ũ⃗ = randn(8, T)
+    
+    traj = NamedTrajectory(
+        (Ũ⃗ = Ũ⃗, u = u, Δt = reshape(Δt, 1, T));
+        controls = (:u, :Δt),
+        timestep = :Δt,
+        initial = (Ũ⃗ = Ũ⃗[:, 1], u = zeros(n_drives)),
+        final = (u = zeros(n_drives),),
+        goal = (Ũ⃗ = Ũ⃗[:, end],)
+    )
+    
+    # Add derivative with zero boundary conditions
+    traj_zero_bc = add_control_derivatives(
+        traj,
+        1;
+        zero_initial_and_final_derivative=true
+    )
+    
+    @test traj_zero_bc isa NamedTrajectory
+    @test haskey(traj_zero_bc.initial, :du)
+    @test haskey(traj_zero_bc.final, :du)
+    @test traj_zero_bc.initial[:du] == zeros(n_drives)
+    @test traj_zero_bc.final[:du] == zeros(n_drives)
+    
+    # Original initial/final constraints should be preserved
+    @test haskey(traj_zero_bc.initial, :u)
+    @test haskey(traj_zero_bc.final, :u)
+end
+
+@testitem "add_control_derivatives with custom control name" begin
+    T = 10
+    n_drives = 2
+    a = randn(n_drives, T) * 0.1
+    Δt = fill(0.1, T)
+    Ũ⃗ = randn(8, T)
+    
+    traj = NamedTrajectory(
+        (Ũ⃗ = Ũ⃗, a = a, Δt = reshape(Δt, 1, T));
+        controls = (:a, :Δt),
+        timestep = :Δt,
+        initial = (Ũ⃗ = Ũ⃗[:, 1],),
+        goal = (Ũ⃗ = Ũ⃗[:, end],)
+    )
+    
+    # Add derivatives for control named 'a'
+    traj_with_da = add_control_derivatives(traj, 1; control_name=:a)
+    
+    @test traj_with_da isa NamedTrajectory
+    @test :da in keys(traj_with_da.components)
+    @test size(traj_with_da[:da]) == (n_drives, T)
+    
+    # Add two derivatives
+    traj_with_dda = add_control_derivatives(traj, 2; control_name=:a)
+    
+    @test :da in keys(traj_with_dda.components)
+    @test :dda in keys(traj_with_dda.components)
+end
+
+@testitem "add_control_derivatives error cases" begin
+    T = 10
+    n_drives = 2
+    u = randn(n_drives, T) * 0.1
+    Δt = fill(0.1, T)
+    Ũ⃗ = randn(8, T)
+    
+    traj = NamedTrajectory(
+        (Ũ⃗ = Ũ⃗, u = u, Δt = reshape(Δt, 1, T));
+        controls = (:u, :Δt),
+        timestep = :Δt,
+        initial = (Ũ⃗ = Ũ⃗[:, 1],),
+        goal = (Ũ⃗ = Ũ⃗[:, end],)
+    )
+    
+    # Control not found
+    @test_throws AssertionError add_control_derivatives(
+        traj, 1; control_name=:nonexistent
+    )
+    
+    # Wrong number of bounds
+    @test_throws AssertionError add_control_derivatives(
+        traj, 2; derivative_bounds=(([-1.0, -1.0], [1.0, 1.0]),)
+    )
+    
+    # Zero or negative derivatives
+    @test_throws AssertionError add_control_derivatives(traj, 0)
+    @test_throws AssertionError add_control_derivatives(traj, -1)
+end
+
+@testitem "add_control_derivatives with random initialization" begin
+    using Statistics: mean
+    
+    T = 10
+    n_drives = 2
+    u = randn(n_drives, T) * 0.1
+    Δt = fill(0.1, T)
+    Ũ⃗ = randn(8, T)
+    
+    traj = NamedTrajectory(
+        (Ũ⃗ = Ũ⃗, u = u, Δt = reshape(Δt, 1, T));
+        controls = (:u, :Δt),
+        timestep = :Δt,
+        initial = (Ũ⃗ = Ũ⃗[:, 1],),
+        goal = (Ũ⃗ = Ũ⃗[:, end],)
+    )
+    
+    # Random initialization
+    traj_random = add_control_derivatives(
+        traj,
+        2;
+        random_init=true,
+        drive_derivative_σ=0.05
+    )
+    
+    @test traj_random isa NamedTrajectory
+    @test :du in keys(traj_random.components)
+    @test :ddu in keys(traj_random.components)
+    @test size(traj_random[:du]) == (n_drives, T)
+    @test size(traj_random[:ddu]) == (n_drives, T)
+    
+    # Check that derivatives are random (not computed via finite differences)
+    # They should be roughly in the range of the sigma
+    @test maximum(abs.(traj_random[:du])) < 0.5  # Should be mostly within a few sigma
+    @test maximum(abs.(traj_random[:ddu])) < 0.5
+    
+    # Test with different sigma
+    traj_random2 = add_control_derivatives(
+        traj,
+        1;
+        random_init=true,
+        drive_derivative_σ=0.5
+    )
+    
+    # Larger sigma should give larger values on average
+    @test mean(abs.(traj_random2[:du])) > mean(abs.(traj_random[:du]))
+end
+
+# =========================================================================== #
 
 @testitem "add component" begin
     using Random
@@ -872,5 +1271,9 @@ end
     @test traj_got.timestep == traj.timestep
     @test remove_component(traj_got, :z, new_timestep=add_suffix(:z, suffix)) == traj_suffixed
 end
+
+# ============================================================================= #
+#                   Add control derivatives to trajectory                       #
+# ============================================================================= #
 
 end
