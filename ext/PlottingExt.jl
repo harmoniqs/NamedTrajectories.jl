@@ -110,7 +110,7 @@ function Makie.plot!(
         indices = isnothing(P[:indices][]) ? range(1, traj.N) : P[:indices][]
 
         series!(
-            P, traj, name;
+            P, P.attributes, traj, name;
             labels = labels,
             color = colors,
             linestyle = P[:linestyle],
@@ -130,17 +130,8 @@ function Makie.plot!(
     P::Plot_Name{<:Tuple{<:NamedTrajectory, Symbol}};
     kwargs...
 )
-    # Manually extract and forward attributes
-    attrs = (; 
-        color = P[:color][],
-        linestyle = P[:linestyle],
-        linewidth = P[:linewidth],
-        marker = P[:marker],
-        markersize = P[:markersize],
-        merge = P[:merge][],
-        indices = P[:indices][]
-    )
-    plot!(P, P[:traj], P[:input_name], L"%$(P[:input_name][])"; merge(attrs, kwargs)...)
+
+    plot!(P, P[:traj], P[:input_name], L"%$(P[:input_name][])"; kwargs...)
     return P
 end
 
@@ -167,7 +158,7 @@ function Makie.plot!(
         indices = isnothing(P[:indices][]) ? range(1, traj.N) : P[:indices][]
 
         series!(
-            P, traj, input;
+            P, P.attributes, traj, input;
             transform = transform,
             labels = labels,
             color = colors,
@@ -188,17 +179,8 @@ function Makie.plot!(
     P::Plot_Name{<:Tuple{<:NamedTrajectory, Symbol, <:AbstractTransform}};
     kwargs...
 )   
-    # Manually extract and forward attributes
-    attrs = (; 
-        color = P[:color][],
-        linestyle = P[:linestyle],
-        linewidth = P[:linewidth],
-        marker = P[:marker],
-        markersize = P[:markersize],
-        merge = P[:merge][],
-        indices = P[:indices][]
-    )
-    plot!(P, P[:traj], P[:input_name], L"T(%$(P[:input_name][]))", P[3]; merge(attrs, kwargs)...)
+
+    plot!(P, P[:traj], P[:input_name], L"T(%$(P[:input_name][]))", P[3]; kwargs...)
     return P
 end
 
