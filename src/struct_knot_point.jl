@@ -9,12 +9,13 @@ using ..StructNamedTrajectory
 """
 struct KnotPoint{
     R <: Real,
+    VT <: AbstractVector{R},
     CNames, CTypes <: StructNamedTrajectory.ComponentType,
     N <: Tuple{Vararg{Symbol}},
     CN <: Tuple{Vararg{Symbol}}
 }
     k::Int
-    data::AbstractVector{R}
+    data::VT
     timestep::R
     components::NamedTuple{CNames, CTypes}
     names::N

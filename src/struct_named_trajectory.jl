@@ -31,7 +31,7 @@ const AbstractBound = Union{ScalarBound, VectorBound}
 # ---------------------------------------------------------------------------- #
 
 """
-    NamedTrajectory{R <: Real}
+    NamedTrajectory{R <: Real, VT <: AbstractVector{R}, GVT <: AbstractVector{R}}
 
 Container for trajectory optimization problems, which includes the trajectory data, bounds dimensions, initial and final conditions, goal states, and components.
 
@@ -41,20 +41,22 @@ NamedTrajectory is designed to make allocation-free access easy to write. The da
 """
 mutable struct NamedTrajectory{
     R <: Real,
+    VT <: AbstractVector{R},
+    GVT <: AbstractVector{R},
     DNames, DTypes <: DimType,
     BNames, BTypes <: BoundType{R},
     INames, ITypes <: DataType{R},
     FNames, FTypes <: DataType{R},
-    global_names, GTypes <: DataType{R},
+    GoalNames, GTypes <: DataType{R},
     CNames, CTypes <: ComponentType,
-    N <: NameType,
+    NamesType <: NameType,
     SN <: NameType,
     CN <: NameType,
     GDNames, GDTypes <: DimType,
     GCNames, GCTypes <: ComponentType,
     GN <: NameType,
 }
-    datavec::AbstractVector{R}
+    datavec::VT
     N::Int
     timestep::Symbol
     dim::Int
@@ -62,16 +64,61 @@ mutable struct NamedTrajectory{
     bounds::NamedTuple{BNames, BTypes}
     initial::NamedTuple{INames, ITypes}
     final::NamedTuple{FNames, FTypes}
-    goal::NamedTuple{global_names, GTypes}
+    goal::NamedTuple{GoalNames, GTypes}
     components::NamedTuple{CNames, CTypes}
-    names::N
+    names::NamesType
     state_names::SN
     control_names::CN
-    global_data::AbstractVector{R}
+    global_data::GVT
     global_dim::Int
     global_dims::NamedTuple{GDNames, GDTypes}
     global_components::NamedTuple{GCNames, GCTypes}
     global_names::GN
+    
+    # Inner constructor that infers vector types
+    function NamedTrajectory(
+        datavec::AbstractVector{R},
+        N::Int,
+        timestep::Symbol,
+        dim::Int,
+        dims::NamedTuple{DNames, DTypes},
+        bounds::NamedTuple{BNames, BTypes},
+        initial::NamedTuple{INames, ITypes},
+        final::NamedTuple{FNames, FTypes},
+        goal::NamedTuple{GoalNames, GTypes},
+        components::NamedTuple{CNames, CTypes},
+        names::NamesType,
+        state_names::SN,
+        control_names::CN,
+        global_data::AbstractVector{R},
+        global_dim::Int,
+        global_dims::NamedTuple{GDNames, GDTypes},
+        global_components::NamedTuple{GCNames, GCTypes},
+        global_names::GN
+    ) where {
+        R <: Real,
+        DNames, DTypes <: DimType,
+        BNames, BTypes <: BoundType{R},
+        INames, ITypes <: DataType{R},
+        FNames, FTypes <: DataType{R},
+        GoalNames, GTypes <: DataType{R},
+        CNames, CTypes <: ComponentType,
+        NamesType <: NameType,
+        SN <: NameType,
+        CN <: NameType,
+        GDNames, GDTypes <: DimType,
+        GCNames, GCTypes <: ComponentType,
+        GN <: NameType
+    }
+        VT = typeof(datavec)
+        GVT = typeof(global_data)
+        new{R, VT, GVT, DNames, DTypes, BNames, BTypes, INames, ITypes, FNames, FTypes, 
+            GoalNames, GTypes, CNames, CTypes, NamesType, SN, CN, GDNames, GDTypes, GCNames, GCTypes, GN}(
+            datavec, N, timestep, dim, dims, bounds, initial, final, goal, 
+            components, names, state_names, control_names, global_data, global_dim, 
+            global_dims, global_components, global_names
+        )
+    end
 end
 
 """

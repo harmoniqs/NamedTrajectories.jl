@@ -110,7 +110,7 @@ function Makie.plot!(
         indices = isnothing(P[:indices][]) ? range(1, traj.N) : P[:indices][]
 
         series!(
-            P, P.attributes, traj, name;
+            P, traj, name;
             labels = labels,
             color = colors,
             linestyle = P[:linestyle],
@@ -130,8 +130,9 @@ function Makie.plot!(
     P::Plot_Name{<:Tuple{<:NamedTrajectory, Symbol}};
     kwargs...
 )
-
-    plot!(P, P[:traj], P[:input_name], L"%$(P[:input_name][])"; kwargs...)
+    # Manually extract and forward attributes
+    attrs = Dict(k => to_value(v) for (k, v) in P.attributes)
+    plot!(P, P[:traj], P[:input_name], L"%$(P[:input_name][])"; merge(attrs, kwargs)...)
     return P
 end
 
@@ -158,7 +159,7 @@ function Makie.plot!(
         indices = isnothing(P[:indices][]) ? range(1, traj.N) : P[:indices][]
 
         series!(
-            P, P.attributes, traj, input;
+            P, traj, input;
             transform = transform,
             labels = labels,
             color = colors,
@@ -169,7 +170,7 @@ function Makie.plot!(
             indices = indices,
             kwargs...
         )
-
+        
     end
     return P
 end
@@ -179,8 +180,10 @@ function Makie.plot!(
     P::Plot_Name{<:Tuple{<:NamedTrajectory, Symbol, <:AbstractTransform}};
     kwargs...
 )   
-
-    plot!(P, P[:traj], P[:input_name], L"T(%$(P[:input_name][]))", P[3]; kwargs...)
+    # Manually extract and forward attributes
+    attrs = Dict(k => to_value(v) for (k, v) in P.attributes)
+    # transform is arg 3
+    plot!(P, P[:traj], P[:input_name], L"T(%$(P[:input_name][]))", P[3]; merge(attrs, kwargs)...)
     return P
 end
 
