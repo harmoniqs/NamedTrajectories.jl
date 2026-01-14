@@ -5,6 +5,7 @@ import NamedTrajectories: plot_name, plot_name!
 
 # recommended to use Makie for ext
 using Makie
+using ComputePipeline
 using TestItems
 
 const AbstractTransform = Union{<:Function, AbstractVector{<:Function}}
@@ -68,19 +69,23 @@ Makie.used_attributes(::Type{<:Series}, ::NamedTrajectory, ::Symbol) = (:transfo
 # -------------------------------------------------------------- #
 
 # docstring in plotting.jl
-@recipe(Plot_Name, traj, input_name, output_name, transform) do scene
-    # Add any desired series attributes here
-    Attributes(
-        color = :glasbey_bw_n256,
-        linestyle = theme(scene, :linestyle),
-        linewidth = theme(scene, :linewidth),
-        marker = theme(scene, :marker),
-        markersize = 0.0,
-        # merge: if true, all components are plotted with the same label
-        merge = false,
-        # indices: knot indices to plot
-        indices = nothing
-    )
+@recipe Plot_Name (traj, input_name, output_name, transform) begin
+    
+color = :glasbey_bw_n256
+    
+    linestyle = @inherit linestyle nothing
+    
+    linewidth = @inherit linewidth
+    
+    marker = @inherit marker
+    
+    markersize = 0.0
+
+    # merge: if true, all components are plotted with the same label
+    merge = false
+    
+    # indices: knot indices to plot
+    indices = nothing
 end
 
 # Add the ability to recall plot labels for a legend (extract series subplots)
@@ -90,98 +95,107 @@ Makie.get_plots(P::Plot_Name) = Makie.get_plots(P.plots[1])
 
 # Plot existing component
 function Makie.plot!(
-    P::Plot_Name{<:Tuple{<:NamedTrajectory, Symbol, <:AbstractString}};
+    traj_plot::Plot_Name{<:Tuple{<:NamedTrajectory, Symbol, <:AbstractString}};
     kwargs...
 )
-    lift(P[:traj], P[:input_name], P[:output_name]) do traj, name, label
-        if P[:merge][]
+    lift(traj_plot[:traj], traj_plot[:input_name], traj_plot[:output_name]) do traj_c, name_c, label_c
+        traj = ComputePipeline.resolve!(traj_c)
+        name = ComputePipeline.resolve!(name_c)
+        label = ComputePipeline.resolve!(label_c)
+        
+        if traj_plot[:merge][]
             labels = fill(label, length(traj.components[name]))
         else
             labels = [convert(typeof(label), "$(label) $(i)") for i in eachindex(traj.components[name])]
         end
 
         # Resample a minimum of 2 colors
-        colors =  Makie.resample_cmap(P[:color][], max(2, length(labels)))
+        colors =  Makie.resample_cmap(traj_plot[:color][], max(2, length(labels)))
 
         # Empty marker means no size
-        markersize = isnothing(P[:marker][]) ? nothing :  P[:markersize]
+        markersize = isnothing(traj_plot[:marker][]) ? nothing :  traj_plot[:markersize]
 
         # Empty indices means all indices
-        indices = isnothing(P[:indices][]) ? range(1, traj.N) : P[:indices][]
+        indices = isnothing(traj_plot[:indices][]) ? range(1, traj.N) : traj_plot[:indices][]
 
         series!(
-            P, P.attributes, traj, name;
+            traj_plot, traj_plot.traj, name;
             labels = labels,
             color = colors,
-            linestyle = P[:linestyle],
-            linewidth = P[:linewidth],
-            marker = P[:marker],
+            linestyle = traj_plot[:linestyle],
+            linewidth = traj_plot[:linewidth],
+            marker = traj_plot[:marker],
             markersize = markersize,
             indices = indices,
             kwargs...
         )
         
     end
-    return P
+    return traj_plot
 end
 
 # Plot existing component (LaTeX label from name)
 function Makie.plot!(
-    P::Plot_Name{<:Tuple{<:NamedTrajectory, Symbol}};
+    traj_plot::Plot_Name{<:Tuple{<:NamedTrajectory, Symbol}};
     kwargs...
 )
-
-    plot!(P, P[:traj], P[:input_name], L"%$(P[:input_name][])"; kwargs...)
-    return P
+    test = ComputePipeline.resolve!(traj_plot[:input_name])
+    plot!(traj_plot, traj_plot.traj, traj_plot[:input_name], L"%$(test)"; kwargs...)
+    return traj_plot
 end
 
 # Plot transformed component
 function Makie.plot!(
-    P::Plot_Name{<:Tuple{<:NamedTrajectory, Symbol, <:AbstractString, <:AbstractTransform}};
+    traj_plot::Plot_Name{<:Tuple{<:NamedTrajectory, Symbol, <:AbstractString, <:AbstractTransform}};
     kwargs...
 )
-    lift(P[:traj], P[:input_name], P[:output_name], P[:transform]) do traj, input, output, transform
-
-        if P[:merge][]
+    lift(traj_plot[:traj], traj_plot[:input_name], traj_plot[:output_name], traj_plot[:transform]) do traj_c, input_c, output_c, transform_c
+        traj = ComputePipeline.resolve!(traj_c)
+        input = ComputePipeline.resolve!(input_c)
+        output = ComputePipeline.resolve!(output_c)
+        transform = ComputePipeline.resolve!(transform_c)
+        
+        if traj_plot[:merge][]
             labels = fill(output, length(traj.components[input]))
         else
             labels = [convert(typeof(output), "$(output) $(i)") for i in eachindex(traj.components[input])]
         end
 
         # Resample a minimum of 2 colors
-        colors =  Makie.resample_cmap(P[:color][], max(2, length(labels)))
+        colors =  Makie.resample_cmap(traj_plot[:color][], max(2, length(labels)))
 
         # Empty marker means no size
-        markersize = isnothing(P[:marker][]) ? nothing :  P[:markersize]
+        markersize = isnothing(traj_plot[:marker][]) ? nothing :  traj_plot[:markersize]
 
         # Empty indices means all indices
-        indices = isnothing(P[:indices][]) ? range(1, traj.N) : P[:indices][]
+        indices = isnothing(traj_plot[:indices][]) ? range(1, traj.N) : traj_plot[:indices][]
 
         series!(
-            P, P.attributes, traj, input;
+            traj_plot, traj, input;
             transform = transform,
             labels = labels,
             color = colors,
-            linestyle = P[:linestyle],
-            linewidth = P[:linewidth],
-            marker = P[:marker],
+            linestyle = traj_plot[:linestyle],
+            linewidth = traj_plot[:linewidth],
+            marker = traj_plot[:marker],
             markersize = markersize,
             indices = indices,
             kwargs...
         )
 
     end
-    return P
+    return traj_plot
 end
 
 # Plot transformed component (output label from name)
 function Makie.plot!(
-    P::Plot_Name{<:Tuple{<:NamedTrajectory, Symbol, <:AbstractTransform}};
+    traj_plot::Plot_Name{<:Tuple{<:NamedTrajectory, Symbol, <:AbstractTransform}};
     kwargs...
 )   
 
-    plot!(P, P[:traj], P[:input_name], L"T(%$(P[:input_name][]))", P[3]; kwargs...)
-    return P
+    out_name = ComputePipeline.resolve!(traj_plot[:input_name])
+    plot!(traj_plot, traj_plot[:traj], traj_plot[:input_name], L"T(%$(out_name))", traj_plot[3]; kwargs...)
+    return traj_plot
 end
 
 # Allow plot to be called as alias for Plot_Name

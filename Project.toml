@@ -1,9 +1,10 @@
 name = "NamedTrajectories"
 uuid = "538bc3a1-5ab9-4fc3-b776-35ca1e893e08"
-authors = ["Aaron Trowbridge <aaron.j.trowbridge@gmail.com> and contributors"]
 version = "0.7.1"
+authors = ["Aaron Trowbridge <aaron.j.trowbridge@gmail.com> and contributors"]
 
 [deps]
+ComputePipeline = "95dc2771-c249-4cd0-9c9f-1f3b4330693c"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 LazyArrays = "5078a376-72f3-5289-bfd5-ec5146d43c02"
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
@@ -21,6 +22,7 @@ InterpolationsExt = ["DataInterpolations"]
 PlottingExt = ["Makie"]
 
 [compat]
+ComputePipeline = "0.1.6"
 DataInterpolations = "8.1"
 JLD2 = "0.6"
 LazyArrays = "2.6"
@@ -34,8 +36,8 @@ julia = "1.10, 1.11, 1.12"
 
 [extras]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["CairoMakie", "DataInterpolations", "Test", "Statistics"]
