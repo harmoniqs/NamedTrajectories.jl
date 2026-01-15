@@ -1,37 +1,59 @@
 
 # API
 
-## NamedTrajectory methods
+## NamedTrajectory Struct
+```@autodocs
+Modules = [
+    NamedTrajectories.StructNamedTrajectory
+]
+```
+
+## KnotPoint Struct
+```@autodocs
+Modules = [
+    NamedTrajectories.StructKnotPoint
+]
+```
+
+## NamedTrajectory Methods
 ```@autodocs
 Modules = [
     NamedTrajectories.MethodsNamedTrajectory,
+    NamedTrajectories.BaseNamedTrajectory
+]
+```
+
+## KnotPoint Methods
+```@autodocs
+Modules = [
     NamedTrajectories.MethodsKnotPoint
 ]
 ```
 
-## Random trajectory methods
+## Random Trajectory Methods
 ```@autodocs
 Modules = [
     NamedTrajectories.RandomTrajectories
 ]
 ```
 
-## Struct Methods
-```@autodocs
-Modules = [
-    StructNamedTrajectory,
-    StructKnotPoint
-]
-```
-
 ## Trajectory Utilities
 ```@autodocs
 Modules = [
-    Utils
+    NamedTrajectories.Utils
+]
+```
+
+## Plotting
+```@autodocs
+Modules = [
+    NamedTrajectories.Plotting
 ]
 ```
 
 ## Interpolation Methods
-```@docs
-trajectory_interpolation
+```@autodocs
+Modules = [
+    Base.get_extension(NamedTrajectories, :InterpolationsExt)
+]
 ```
