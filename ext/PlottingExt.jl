@@ -5,7 +5,7 @@ import NamedTrajectories: trajectoryplot, trajectoryplot!, plot_trajectory, plot
 
 # recommended to use Makie for ext
 using Makie
-import Makie: plot, Legend
+import Makie: plot
 using TestItems
 
 const AbstractTransform = Union{<:Function, AbstractVector{<:Function}}
@@ -204,22 +204,6 @@ function NamedTrajectories.plot_name(traj::TrajType, args...; kwargs...)
 end
 
 # -------------------------------------------------------------- #
-# Legend Overload
-# -------------------------------------------------------------- #
-
-function Makie.Legend(pos, ax::Axis; merge=false, kwargs...)
-    labeled_plots = filter(p -> haskey(p, :label) && !isnothing(to_value(p.label)), ax.scene.plots)
-    if merge
-        unique_labels = unique(to_value(p.label) for p in labeled_plots)
-        merged_plots = [first(filter(p -> to_value(p.label) == lbl, labeled_plots)) for lbl in unique_labels]
-        return Legend(pos, merged_plots, unique_labels; kwargs...)
-    else
-        labels = [to_value(p.label) for p in labeled_plots]
-        return Legend(pos, labeled_plots, labels; kwargs...)
-    end
-end
-
-# -------------------------------------------------------------- #
 # Trajectory Plot methods
 # -------------------------------------------------------------- #
 
@@ -340,15 +324,11 @@ function Makie.plot(
         trajectoryplot!(ax, traj, name; merge=merge, kwargs...)
         Legend(fig[i, 2], ax; 
             merge=merge, 
-            labelsize=8, 
-            patchsize=(12, 8), 
-            rowgap=0, 
-            padding=2,
-            patchlabelgap=2,
-            tellheight=false,
-            tellwidth=true,
-            halign=:left,
-            valign=:top
+            labelsize=10, 
+            patchsize=(12, 12), 
+            rowgap=2, 
+            padding=(5, 5, 5, 5),
+            halign=:left
         )
     end
 
@@ -385,24 +365,17 @@ function Makie.plot(
         end
         Legend(fig[offset + i, 2], ax; 
             merge=merge, 
-            labelsize=8, 
-            patchsize=(12, 8), 
-            rowgap=0, 
-            padding=2,
-            patchlabelgap=2,
-            tellheight=false,
-            tellwidth=true,
-            halign=:left,
-            valign=:top
+            labelsize=10, 
+            patchsize=(12, 12), 
+            rowgap=2, 
+            padding=(5, 5, 5, 5),
+            halign=:left
         )
     end
 
     for i in 1:length(transformations)-1
         rowgap!(fig.layout, offset + i, 0.0)
     end
-
-    colsize!(fig.layout, 2, Auto())
-    colgap!(fig.layout, 1, 5)
 
     fig
 end
@@ -426,7 +399,7 @@ end
     @test f isa Figure
 end
 
-@testitem "convert_arguments plot with legend and transform" begin
+@testitem "convert_arguments plot with transform" begin
     using CairoMakie
     traj = rand(NamedTrajectory, 10, state_dim=3)
 
@@ -439,7 +412,6 @@ end
         ax, traj, :x, x -> x .^ 2, 
         label=labels, color=:seaborn_colorblind, marker=:circle,
     )
-    Legend(f[2,2], ax)
     # Check labels on the individual lines
     # p.plots contains Lines objects.
     # Verify we have correct number of plots and labels match
@@ -461,7 +433,6 @@ end
     f = Figure()
     ax = Axis(f[1,1])
     p = plot_name!(ax, traj, :x)
-    Legend(f[1,2], ax)
 
     @test p isa Plot
     
@@ -520,7 +491,6 @@ end
     f = Figure()
     ax = Axis(f[1,1])
     p = plot_name!(ax, traj, :x)
-    Legend(f[1,2], ax)
     # extract data: 
     # Should have 100 Lines plots
     line_plots = filter(x -> x isa Lines, p.plots)
@@ -569,7 +539,6 @@ end
     f = Figure()
     ax = Axis(f[1,1])
     p = plot_name!(ax, traj, :x, "y", x -> x .^ 2, linewidth=3, marker=:circle, merge=true)
-    Legend(f[1,2], ax, merge=true)
     
     # With merge=true, labels should be just "y"
     line_plots = filter(x -> x isa Lines, p.plots)
@@ -579,7 +548,6 @@ end
 
     ax = Axis(f[2,1])
     p = plot_name!(ax, traj, :x, "y", x -> x .^ 2, linewidth=3, marker=:circle)
-    Legend(f[2,2], ax)
     
     # With merge=false (default), labels should be "y1", "y2", etc.
     line_plots = filter(x -> x isa Lines, p.plots)
@@ -640,10 +608,6 @@ end
     @test length(lines1) == state_dim
     # Check labels - all should be "x" (or component name)
     @test all(l -> l.label[] == "x", lines1)
-    
-    # Legend check?
-    # Verify that we have legends
-    @test any(c -> c isa Legend, f.content)
 end
 
 @testitem "traj plot with transformations" begin
@@ -659,14 +623,9 @@ end
         transformation_labels=["Label(x)", "Label(u)"], 
         merge_transformation_labels=[false, true]
     )
-    # check for all the right parts
-    ax1, leg1, ax2, leg2, ax3, leg3 = f.content
-    for ax in [ax1, ax2, ax3]
-        @test ax isa Axis
-    end
-    for leg in [leg1, leg2, leg3]
-        @test leg isa Legend
-    end
+    # check for axes
+    axes = filter(c -> c isa Axis, f.content)
+    @test length(axes) == 3
 
     # test repeat label
     push!(transformations, (:x => x -> [x[2] ^6]))
@@ -674,13 +633,8 @@ end
         traj, 
         transformations=transformations,
     )
-    ax1, leg1, ax2, leg2, ax3, leg3, ax4, leg4 = f.content
-    for ax in [ax1, ax2, ax3, ax4]
-        @test ax isa Axis
-    end
-    for leg in [leg1, leg2, leg3, leg4]
-        @test leg isa Legend
-    end
+    axes = filter(c -> c isa Axis, f.content)
+    @test length(axes) == 5
     @test f isa Figure
 end
 
@@ -697,9 +651,9 @@ end
         transformations=transformations,
         transformation_titles=transformation_titles
     )
-    ax1, leg1, ax2, leg2 = f.content
-    @test ax1.subtitle[] == transformation_titles[1]
-    @test ax2.subtitle[] == transformation_titles[2]
+    axes = filter(c -> c isa Axis, f.content)
+    @test axes[1].subtitle[] == transformation_titles[1]
+    @test axes[2].subtitle[] == transformation_titles[2]
 
 end
 
