@@ -321,15 +321,11 @@ function Makie.plot(
             limits = limits
         )
         merge = merge_labels[i]
-        trajectoryplot!(ax, traj, name; merge=merge, kwargs...)
-        Legend(fig[i, 2], ax; 
-            merge=merge, 
-            labelsize=10, 
-            patchsize=(12, 12), 
-            rowgap=2, 
-            padding=(5, 5, 5, 5),
-            halign=:left
-        )
+        plt = trajectoryplot!(ax, traj, name; merge=merge, kwargs...)
+        # Legend construction
+        child_plots = filter(p -> haskey(p, :label) && !isnothing(to_value(p.label)), plt.plots)
+        labels = [to_value(p.label) for p in child_plots]
+        Legend(fig[i, 2], child_plots, labels, tellheight=false)
     end
 
     for i in 1:length(names) - 1
@@ -359,18 +355,14 @@ function Makie.plot(
         output = transformation_labels[i]
         merge = merge_transformation_labels[i]
         if !isempty(output)
-            trajectoryplot!(ax, traj, input, output, transform; merge=merge, kwargs...)
+            plt = trajectoryplot!(ax, traj, input, output, transform; merge=merge, kwargs...)
         else
-            trajectoryplot!(ax, traj, input, transform; merge=merge, kwargs...)
+            plt = trajectoryplot!(ax, traj, input, transform; merge=merge, kwargs...)
         end
-        Legend(fig[offset + i, 2], ax; 
-            merge=merge, 
-            labelsize=10, 
-            patchsize=(12, 12), 
-            rowgap=2, 
-            padding=(5, 5, 5, 5),
-            halign=:left
-        )
+        # Legend construction
+        child_plots = filter(p -> haskey(p, :label) && !isnothing(to_value(p.label)), plt.plots)
+        labels = [to_value(p.label) for p in child_plots]
+        Legend(fig[offset + i, 2], child_plots, labels, tellheight=false)
     end
 
     for i in 1:length(transformations)-1
