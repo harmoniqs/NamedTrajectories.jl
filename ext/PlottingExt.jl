@@ -338,7 +338,18 @@ function Makie.plot(
         )
         merge = merge_labels[i]
         trajectoryplot!(ax, traj, name; merge=merge, kwargs...)
-        Legend(fig[i, 2], ax, merge=merge)
+        Legend(fig[i, 2], ax; 
+            merge=merge, 
+            labelsize=8, 
+            patchsize=(12, 8), 
+            rowgap=0, 
+            padding=2,
+            patchlabelgap=2,
+            tellheight=false,
+            tellwidth=true,
+            halign=:left,
+            valign=:top
+        )
     end
 
     for i in 1:length(names) - 1
@@ -372,12 +383,26 @@ function Makie.plot(
         else
             trajectoryplot!(ax, traj, input, transform; merge=merge, kwargs...)
         end
-        Legend(fig[offset + i, 2], ax, merge=merge)
+        Legend(fig[offset + i, 2], ax; 
+            merge=merge, 
+            labelsize=8, 
+            patchsize=(12, 8), 
+            rowgap=0, 
+            padding=2,
+            patchlabelgap=2,
+            tellheight=false,
+            tellwidth=true,
+            halign=:left,
+            valign=:top
+        )
     end
 
     for i in 1:length(transformations)-1
         rowgap!(fig.layout, offset + i, 0.0)
     end
+
+    colsize!(fig.layout, 2, Auto())
+    colgap!(fig.layout, 1, 5)
 
     fig
 end
@@ -715,5 +740,55 @@ end
     @test f isa Figure
 end
 
+@testitem "multiple components in trajectoryplot!" begin
+    using CairoMakie
+    traj = rand(NamedTrajectory, 10, state_dim=3, control_dim=2)
+    f = Figure()
+    ax = Axis(f[1, 1])
+    p = trajectoryplot!(ax, traj, [:x, :u])
+    
+    # Check for Lines from both components
+    # :x has 3 dims, :u has 2 dims -> total 5 line plots
+    line_plots = filter(x -> x isa Lines, p.plots)
+    @test length(line_plots) == 5
+    
+    # Verify labels contain both x and u
+    labels = [lp.label[] for lp in line_plots]
+    @test any(contains("x"), labels)
+    @test any(contains("u"), labels)
+end
+
+@testitem "markersize and scatter plots" begin
+    using CairoMakie
+    traj = rand(NamedTrajectory, 10, state_dim=2)
+    f = Figure()
+    ax = Axis(f[1, 1])
+    p = trajectoryplot!(ax, traj, :x, markersize=5, marker=:circle)
+    
+    # Should have 2 Lines and 2 Scatters
+    line_plots = filter(x -> x isa Lines, p.plots)
+    scatter_plots = filter(x -> x isa Scatter, p.plots)
+    
+    @test length(line_plots) == 2
+    @test length(scatter_plots) == 2
+    
+    # Check markersize attribute
+    @test all(scatter_plots[1].markersize[] .≈ 5)
+end
+
+@testitem "custom colormap and unique colors" begin
+    using CairoMakie
+    traj = rand(NamedTrajectory, 10, state_dim=3)
+    f = Figure()
+    ax = Axis(f[1, 1])
+    cmap = :viridis
+    p = trajectoryplot!(ax, traj, :x, color=cmap)
+    
+    line_plots = filter(x -> x isa Lines, p.plots)
+    colors = [lp.color[] for lp in line_plots]
+    
+    # Colors should be unique if sampled from colormap
+    @test length(unique(colors)) == 3
+end
 
 end
