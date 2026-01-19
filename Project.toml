@@ -1,6 +1,6 @@
 name = "NamedTrajectories"
 uuid = "538bc3a1-5ab9-4fc3-b776-35ca1e893e08"
-version = "0.8.0"
+version = "0.8.1"
 authors = ["Aaron Trowbridge <aaron.j.trowbridge@gmail.com> and contributors"]
 
 [deps]
@@ -22,10 +22,10 @@ InterpolationsExt = ["DataInterpolations"]
 PlottingExt = ["Makie"]
 
 [compat]
-ComputePipeline = "0.1.6"
+ComputePipeline = "0.1"
 DataInterpolations = "8.1"
 JLD2 = "0.6"
-LazyArrays = "2.6"
+LazyArrays = "2.9"
 Makie = "0.21, 0.22, 0.23, 0.24"
 OrderedCollections = "1.8"
 Reexport = "1.2"
