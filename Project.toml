@@ -1,6 +1,6 @@
 name = "NamedTrajectories"
 uuid = "538bc3a1-5ab9-4fc3-b776-35ca1e893e08"
-version = "0.8.1"
+version = "0.8.2"
 authors = ["Aaron Trowbridge <aaron.j.trowbridge@gmail.com> and contributors"]
 
 [deps]
