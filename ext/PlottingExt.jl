@@ -118,7 +118,12 @@ function Makie.plot!(p::TrajectoryPlot)
             val = trans[1](init_data[:, 1])
             K = length(val)
         else
-            K = size(stack(trans.(eachcol(init_data))), 1)
+            transformed = trans.(eachcol(init_data))
+            if !isa(transformed[1], AbstractVector)
+                K = length(transformed[1])
+            else
+                K = size(stack(transformed), 1)
+            end
         end
 
         colors = Makie.resample_cmap(to_value(p.color), max(2, K))
@@ -735,6 +740,29 @@ end
     
     # Colors should be unique if sampled from colormap
     @test length(unique(colors)) == 3
+end
+
+@testitem "labels on transformed traj on one vector use correct dim of vector for color/label sampling" begin
+    using CairoMakie
+    
+    traj = rand(NamedTrajectory, 10, state_dim=3, control_dim=2)
+    plt = plot(traj, transformations = [(:x => x -> [x[1]])])
+    @test plt isa Figure    
+    # transformed plot and legend are: 3rd plot (row) and legend is in 2nd column.
+    # entrygroups[] is a vector (usuall of length 1) of tuples (legend title, legend entries)
+    _, transformed_legend_entries = contents(plt[3, 2])[1].entrygroups[][1]
+    @test length(transformed_legend_entries) == 1
+    
+    plt = plot(traj, transformations = [(:x => x -> x[1:1])])
+    @test plt isa Figure
+    _, transformed_legend_entries = contents(plt[3, 2])[1].entrygroups[][1]
+    @test length(transformed_legend_entries) == 1
+    
+    # special scalar case
+    plt = plot(traj, transformations = [(:x => x -> x[1])])
+    @test plt isa Figure
+    _, transformed_legend_entries = contents(plt[3, 2])[1].entrygroups[][1]
+    @test length(transformed_legend_entries) == 1
 end
 
 end
