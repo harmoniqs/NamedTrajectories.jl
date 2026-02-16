@@ -101,3 +101,28 @@ transformations = [
 
 ## plot the trajectory, with only the transformation and the `u` control
 plot(traj, [:u]; transformations=transformations,)
+
+# ## Merging legend labels
+
+#=
+By default, each dimension of a multi-dimensional component gets its own legend entry
+(e.g., ``x_1``, ``x_2``, ``x_3``). The `merge_labels` keyword argument collapses these
+into a single legend entry per component, which is useful when individual dimensions
+are not meaningful on their own.
+
+Pass `merge_labels=true` to merge all components, or a `Vector{Bool}` to control
+merging per component.
+=#
+
+## merge all legend labels
+plot(traj, [:x, :u]; merge_labels=true)
+
+#
+
+## merge only the state labels, keep control labels separate
+plot(traj, [:x, :u]; merge_labels=[true, false])
+
+# The same option is available for transformation legends via `merge_transformation_labels`:
+
+transformations = [(:x => x -> abs.(x))]
+plot(traj, [:u]; transformations=transformations, merge_transformation_labels=true)
