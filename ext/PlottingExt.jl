@@ -399,7 +399,6 @@ end
 
 @testitem "convert_arguments plot with transform" begin
     using CairoMakie
-    using LaTeXStrings
     traj = rand(NamedTrajectory, 10, state_dim=3)
 
     f = Figure()
@@ -426,7 +425,6 @@ end
 
 @testitem "basic Plot_Name recipe" begin
     using CairoMakie
-    using LaTeXStrings
 
     traj = rand(NamedTrajectory, 10, state_dim=3)
 
@@ -448,7 +446,7 @@ end
     line_plots = filter(x -> x isa Lines, p.plots)
     @test length(line_plots) == size(traj.x, 1)
 
-    expected_labels = [latexstring("\$x_{$i}\$") for i in 1:size(traj.x, 1)]
+    expected_labels = ["\$x_{$i}\$" for i in 1:size(traj.x, 1)]
     for (i, lp) in enumerate(line_plots)
         @test lp.label[] == expected_labels[i]
     end
@@ -534,7 +532,6 @@ end
 
 @testitem "Plot_Name transform and merge" begin
     using CairoMakie
-    using LaTeXStrings
     traj = rand(NamedTrajectory, 10, state_dim=3)
 
     f = Figure()
@@ -544,7 +541,7 @@ end
     # With merge=true, labels should be just L"$y$"
     line_plots = filter(x -> x isa Lines, p.plots)
     for lp in line_plots
-        @test lp.label[] == latexstring("\$y\$")
+        @test lp.label[] == "\$y\$"
     end
 
     ax = Axis(f[2,1])
@@ -553,13 +550,12 @@ end
     # With merge=false (default), labels should be L"$y_{1}$", L"$y_{2}$", etc.
     line_plots = filter(x -> x isa Lines, p.plots)
     for (i, lp) in enumerate(line_plots)
-        @test lp.label[] == latexstring("\$y_{$i}\$")
+        @test lp.label[] == "\$y_{$i}\$"
     end
 end
 
 @testitem "traj plot merge" begin
     using CairoMakie
-    using LaTeXStrings
     state_dim = 3
     control_dim = 2
     traj = rand(NamedTrajectory, 10, state_dim=state_dim, control_dim=control_dim)
@@ -595,7 +591,7 @@ end
 
     @test length(lines1) == state_dim
     # Check labels - should be L"$x_{1}$", L"$x_{2}$", L"$x_{3}$"
-    @test all(l -> l.label[] != latexstring("\$x\$"), lines1)
+    @test all(l -> l.label[] != "\$x\$", lines1)
 
     # true, true
     f = plot(traj, merge_labels=true)
@@ -609,7 +605,7 @@ end
 
     @test length(lines1) == state_dim
     # Check labels - all should be L"$x$" (merged)
-    @test all(l -> l.label[] == latexstring("\$x\$"), lines1)
+    @test all(l -> l.label[] == "\$x\$", lines1)
 end
 
 @testitem "traj plot with transformations" begin
@@ -698,7 +694,6 @@ end
 
 @testitem "multiple components in trajectoryplot!" begin
     using CairoMakie
-    using LaTeXStrings
     traj = rand(NamedTrajectory, 10, state_dim=3, control_dim=2)
     f = Figure()
     ax = Axis(f[1, 1])
