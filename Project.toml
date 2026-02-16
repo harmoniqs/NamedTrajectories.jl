@@ -6,6 +6,7 @@ authors = ["Aaron Trowbridge <aaron.j.trowbridge@gmail.com> and contributors"]
 [deps]
 ComputePipeline = "95dc2771-c249-4cd0-9c9f-1f3b4330693c"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
+LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 LazyArrays = "5078a376-72f3-5289-bfd5-ec5146d43c02"
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
@@ -25,6 +26,7 @@ PlottingExt = ["Makie"]
 ComputePipeline = "0.1"
 DataInterpolations = "8.1"
 JLD2 = "0.6"
+LaTeXStrings = "1"
 LazyArrays = "2.9"
 Makie = "0.21, 0.22, 0.23, 0.24"
 OrderedCollections = "1.8"
