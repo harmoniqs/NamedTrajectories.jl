@@ -155,14 +155,26 @@ function Makie.plot!(p::TrajectoryPlot)
             lbl = lift(p.label, p.merge) do base_label, m
                 if base_label isa AbstractVector
                      # If label is a vector, assume it matches K dimensions
-                     return i <= length(base_label) ? base_label[i] : latexstring("\$", string(comp), "\$")
+                     return i <= length(base_label) ? base_label[i] : latexstring(string(comp))
                 end
 
-                b = isnothing(base_label) ? string(comp) : base_label
-                if m || K == 1
-                    return latexstring("\$", b, "\$")
+                if isnothing(base_label)
+                    b = string(comp)
+                elseif base_label isa LaTeXString
+                    if m || K == 1
+                        return base_label
+                    end
+                    # Extract inner content from $...$ wrapping
+                    s = String(base_label)
+                    b = startswith(s, "\$") && endswith(s, "\$") ? s[2:end-1] : s
                 else
-                    return latexstring("\$", b, "_{", i, "}\$")
+                    b = base_label
+                end
+
+                if m || K == 1
+                    return latexstring(b)
+                else
+                    return latexstring(b, "_{", i, "}")
                 end
             end
 
