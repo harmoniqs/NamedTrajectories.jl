@@ -23,4 +23,5 @@ generate_docs(
     ],
     pages;
     format_kwargs = (canonical = "https://docs.harmoniqs.co/NamedTrajectories.jl",),
+    versions = ["dev" => "dev", "stable" => "v^", "v#.#"]
 )
