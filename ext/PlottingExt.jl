@@ -6,6 +6,7 @@ import NamedTrajectories: trajectoryplot, trajectoryplot!, plot_trajectory, plot
 # recommended to use Makie for ext
 using Makie
 import Makie: plot
+using LaTeXStrings
 using TestItems
 
 const AbstractTransform = Union{<:Function, AbstractVector{<:Function}}
@@ -154,14 +155,14 @@ function Makie.plot!(p::TrajectoryPlot)
             lbl = lift(p.label, p.merge) do base_label, m
                 if base_label isa AbstractVector
                      # If label is a vector, assume it matches K dimensions
-                     return i <= length(base_label) ? base_label[i] : string(comp)
+                     return i <= length(base_label) ? base_label[i] : latexstring("\$", string(comp), "\$")
                 end
 
                 b = isnothing(base_label) ? string(comp) : base_label
                 if m || K == 1
-                    return b
+                    return latexstring("\$", b, "\$")
                 else
-                    return "$(b)$(i)"
+                    return latexstring("\$", b, "_{", i, "}\$")
                 end
             end
 
@@ -398,15 +399,16 @@ end
 
 @testitem "convert_arguments plot with transform" begin
     using CairoMakie
+    using LaTeXStrings
     traj = rand(NamedTrajectory, 10, state_dim=3)
 
     f = Figure()
     trajectoryplot(f[1,1], traj, :x)
-    
+
     ax = Axis(f[2, 1])
     labels = ["T(x) $i" for i in 1:size(traj.x, 1)]
     p = trajectoryplot!(
-        ax, traj, :x, x -> x .^ 2, 
+        ax, traj, :x, x -> x .^ 2,
         label=labels, color=:seaborn_colorblind, marker=:circle,
     )
     # Check labels on the individual lines
@@ -424,6 +426,7 @@ end
 
 @testitem "basic Plot_Name recipe" begin
     using CairoMakie
+    using LaTeXStrings
 
     traj = rand(NamedTrajectory, 10, state_dim=3)
 
@@ -432,20 +435,20 @@ end
     p = plot_name!(ax, traj, :x)
 
     @test p isa Plot
-    
+
     # Test Series attributes (now on the recipe object or distributed)
     # The recipe object p has the attributes passed to it.
     for attr in [:color, :linestyle, :linewidth, :marker, :markersize]
         @test haskey(p.attributes, attr)
     end
 
-    # Test labels 
-    # The recipe creates multiple lines. 
+    # Test labels
+    # The recipe creates multiple lines.
     # We check if the lines have the correct labels.
     line_plots = filter(x -> x isa Lines, p.plots)
     @test length(line_plots) == size(traj.x, 1)
-    
-    expected_labels = ["x$i" for i in 1:size(traj.x, 1)]
+
+    expected_labels = [latexstring("\$x_{$i}\$") for i in 1:size(traj.x, 1)]
     for (i, lp) in enumerate(line_plots)
         @test lp.label[] == expected_labels[i]
     end
@@ -531,30 +534,32 @@ end
 
 @testitem "Plot_Name transform and merge" begin
     using CairoMakie
+    using LaTeXStrings
     traj = rand(NamedTrajectory, 10, state_dim=3)
 
     f = Figure()
     ax = Axis(f[1,1])
     p = plot_name!(ax, traj, :x, "y", x -> x .^ 2, linewidth=3, marker=:circle, merge=true)
-    
-    # With merge=true, labels should be just "y"
+
+    # With merge=true, labels should be just L"$y$"
     line_plots = filter(x -> x isa Lines, p.plots)
     for lp in line_plots
-        @test lp.label[] == "y"
+        @test lp.label[] == latexstring("\$y\$")
     end
 
     ax = Axis(f[2,1])
     p = plot_name!(ax, traj, :x, "y", x -> x .^ 2, linewidth=3, marker=:circle)
-    
-    # With merge=false (default), labels should be "y1", "y2", etc.
+
+    # With merge=false (default), labels should be L"$y_{1}$", L"$y_{2}$", etc.
     line_plots = filter(x -> x isa Lines, p.plots)
     for (i, lp) in enumerate(line_plots)
-        @test lp.label[] == "y$i"
+        @test lp.label[] == latexstring("\$y_{$i}\$")
     end
 end
 
 @testitem "traj plot merge" begin
     using CairoMakie
+    using LaTeXStrings
     state_dim = 3
     control_dim = 2
     traj = rand(NamedTrajectory, 10, state_dim=state_dim, control_dim=control_dim)
@@ -563,7 +568,7 @@ end
     f = plot(traj)
     # Check axis 1 (states)
     ax1 = f.content[1] # Axis
-    
+
     # Helper to find Lines plots recursively
     function find_lines(scene)
         lines = []
@@ -576,11 +581,11 @@ end
         end
         return lines
     end
-    
+
     # Use Makie's collect_atomic_plots if available or manual traversal
     # ax1.scene.plots contains the recipe plot.
     # The recipe plot contains Lines.
-    
+
     # Manual traversal for safety
     all_plots = []
     for p in ax1.scene.plots
@@ -589,13 +594,13 @@ end
     lines1 = filter(p -> p isa Lines, all_plots)
 
     @test length(lines1) == state_dim
-    # Check labels
-    @test all(l -> l.label[] != "x", lines1) # Should be x1, x2, x3
+    # Check labels - should be L"$x_{1}$", L"$x_{2}$", L"$x_{3}$"
+    @test all(l -> l.label[] != latexstring("\$x\$"), lines1)
 
     # true, true
     f = plot(traj, merge_labels=true)
     ax1 = f.content[1]
-    
+
     all_plots = []
     for p in ax1.scene.plots
         append!(all_plots, p.plots)
@@ -603,8 +608,8 @@ end
     lines1 = filter(p -> p isa Lines, all_plots)
 
     @test length(lines1) == state_dim
-    # Check labels - all should be "x" (or component name)
-    @test all(l -> l.label[] == "x", lines1)
+    # Check labels - all should be L"$x$" (merged)
+    @test all(l -> l.label[] == latexstring("\$x\$"), lines1)
 end
 
 @testitem "traj plot with transformations" begin
@@ -693,18 +698,19 @@ end
 
 @testitem "multiple components in trajectoryplot!" begin
     using CairoMakie
+    using LaTeXStrings
     traj = rand(NamedTrajectory, 10, state_dim=3, control_dim=2)
     f = Figure()
     ax = Axis(f[1, 1])
     p = trajectoryplot!(ax, traj, [:x, :u])
-    
+
     # Check for Lines from both components
     # :x has 3 dims, :u has 2 dims -> total 5 line plots
     line_plots = filter(x -> x isa Lines, p.plots)
     @test length(line_plots) == 5
-    
-    # Verify labels contain both x and u
-    labels = [lp.label[] for lp in line_plots]
+
+    # Verify labels contain both x and u (LaTeXStrings contain the symbol names)
+    labels = [string(lp.label[]) for lp in line_plots]
     @test any(contains("x"), labels)
     @test any(contains("u"), labels)
 end
