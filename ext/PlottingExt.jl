@@ -343,6 +343,20 @@ function Makie.plot(
         # Legend construction
         child_plots = filter(p -> haskey(p, :label) && !isnothing(to_value(p.label)), plt.plots)
         labels = [to_value(p.label) for p in child_plots]
+        # Deduplicate legend entries when labels are merged
+        if merge
+            seen = Set{String}()
+            keep = Int[]
+            for (j, lbl) in enumerate(labels)
+                s = string(lbl)
+                if s ∉ seen
+                    push!(seen, s)
+                    push!(keep, j)
+                end
+            end
+            child_plots = child_plots[keep]
+            labels = labels[keep]
+        end
         Legend(fig[i, 2], child_plots, labels, tellheight=false)
     end
 
@@ -380,6 +394,20 @@ function Makie.plot(
         # Legend construction
         child_plots = filter(p -> haskey(p, :label) && !isnothing(to_value(p.label)), plt.plots)
         labels = [to_value(p.label) for p in child_plots]
+        # Deduplicate legend entries when labels are merged
+        if merge
+            seen = Set{String}()
+            keep = Int[]
+            for (j, lbl) in enumerate(labels)
+                s = string(lbl)
+                if s ∉ seen
+                    push!(seen, s)
+                    push!(keep, j)
+                end
+            end
+            child_plots = child_plots[keep]
+            labels = labels[keep]
+        end
         Legend(fig[offset + i, 2], child_plots, labels, tellheight=false)
     end
 
@@ -642,6 +670,103 @@ end
     @test length(lines1) == state_dim
     # Check labels - all should be L"$x$" (merged)
     @test all(l -> l.label[] == "\$x\$", lines1)
+end
+
+@testitem "merge_labels legend deduplication" begin
+    using CairoMakie
+    state_dim = 3
+    control_dim = 2
+    traj = rand(NamedTrajectory, 10, state_dim=state_dim, control_dim=control_dim)
+
+    # merge_labels=true should produce one legend entry per component
+    f = plot(traj, merge_labels=true)
+    # Row 1: x with 3 dims → legend should have 1 entry
+    legend1 = contents(f[1, 2])[1]
+    _, entries1 = legend1.entrygroups[][1]
+    @test length(entries1) == 1
+
+    # Row 2: u with 2 dims → legend should have 1 entry
+    legend2 = contents(f[2, 2])[1]
+    _, entries2 = legend2.entrygroups[][1]
+    @test length(entries2) == 1
+
+    # Without merge: legend entries should match dimensionality
+    f2 = plot(traj)
+    legend1_nomerge = contents(f2[1, 2])[1]
+    _, entries1_nomerge = legend1_nomerge.entrygroups[][1]
+    @test length(entries1_nomerge) == state_dim
+
+    legend2_nomerge = contents(f2[2, 2])[1]
+    _, entries2_nomerge = legend2_nomerge.entrygroups[][1]
+    @test length(entries2_nomerge) == control_dim
+end
+
+@testitem "merge_labels mixed per-component" begin
+    using CairoMakie
+    state_dim = 3
+    control_dim = 2
+    traj = rand(NamedTrajectory, 10, state_dim=state_dim, control_dim=control_dim)
+
+    # merge_labels=[false, true]: x unmerged, u merged
+    f = plot(traj, [:x, :u], merge_labels=[false, true])
+
+    # Row 1: x with merge=false → state_dim legend entries
+    legend1 = contents(f[1, 2])[1]
+    _, entries1 = legend1.entrygroups[][1]
+    @test length(entries1) == state_dim
+
+    # Row 2: u with merge=true → 1 legend entry
+    legend2 = contents(f[2, 2])[1]
+    _, entries2 = legend2.entrygroups[][1]
+    @test length(entries2) == 1
+end
+
+@testitem "merge_labels with transformations" begin
+    using CairoMakie
+    state_dim = 3
+    control_dim = 2
+    traj = rand(NamedTrajectory, 10, state_dim=state_dim, control_dim=control_dim)
+
+    # Test merge_transformation_labels deduplicates transformation legends
+    transformations = [(:x => x -> abs.(x)), (:u => u -> u .^ 2)]
+    f = plot(
+        traj, Symbol[];
+        transformations=transformations,
+        merge_transformation_labels=true
+    )
+    # Row 1: transform of x (3 dims) with merge → 1 legend entry
+    legend1 = contents(f[1, 2])[1]
+    _, entries1 = legend1.entrygroups[][1]
+    @test length(entries1) == 1
+
+    # Row 2: transform of u (2 dims) with merge → 1 legend entry
+    legend2 = contents(f[2, 2])[1]
+    _, entries2 = legend2.entrygroups[][1]
+    @test length(entries2) == 1
+
+    # Mixed: merge_labels=[false, true] on components + merge_transformation_labels=[true, false] on transforms
+    f2 = plot(
+        traj, [:x, :u];
+        merge_labels=[false, true],
+        transformations=transformations,
+        merge_transformation_labels=[true, false]
+    )
+
+    # Row 1 (x, unmerged): state_dim entries
+    _, entries_x = contents(f2[1, 2])[1].entrygroups[][1]
+    @test length(entries_x) == state_dim
+
+    # Row 2 (u, merged): 1 entry
+    _, entries_u = contents(f2[2, 2])[1].entrygroups[][1]
+    @test length(entries_u) == 1
+
+    # Row 3 (transform x, merged): 1 entry
+    _, entries_tx = contents(f2[3, 2])[1].entrygroups[][1]
+    @test length(entries_tx) == 1
+
+    # Row 4 (transform u, unmerged): control_dim entries
+    _, entries_tu = contents(f2[4, 2])[1].entrygroups[][1]
+    @test length(entries_tu) == control_dim
 end
 
 @testitem "traj plot with transformations" begin
