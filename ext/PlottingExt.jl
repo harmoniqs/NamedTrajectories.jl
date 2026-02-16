@@ -566,6 +566,30 @@ end
     end
 end
 
+@testitem "LaTeXString label passthrough without double-wrapping" begin
+    using CairoMakie
+    using LaTeXStrings
+    traj = rand(NamedTrajectory, 10, state_dim=3)
+
+    f = Figure()
+
+    # Merged: LaTeXString label should be returned as-is
+    ax = Axis(f[1, 1])
+    p = plot_name!(ax, traj, :x, L"$\alpha$", x -> x .^ 2, merge=true)
+    line_plots = filter(x -> x isa Lines, p.plots)
+    for lp in line_plots
+        @test lp.label[] == L"$\alpha$"
+    end
+
+    # Not merged: should append subscript without double-wrapping $
+    ax = Axis(f[2, 1])
+    p = plot_name!(ax, traj, :x, L"$\alpha$", x -> x .^ 2)
+    line_plots = filter(x -> x isa Lines, p.plots)
+    for (i, lp) in enumerate(line_plots)
+        @test lp.label[] == latexstring("\\alpha_{$i}")
+    end
+end
+
 @testitem "traj plot merge" begin
     using CairoMakie
     state_dim = 3
