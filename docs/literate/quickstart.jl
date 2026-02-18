@@ -32,18 +32,14 @@ N = 10
 Δt = 0.1
 
 ## define the knot point data as a NamedTuple of matrices
-data = (
-    x = rand(3, N),
-    u = rand(2, N),
-    Δt = fill(Δt, N),
-)
+data = (x = rand(3, N), u = rand(2, N), Δt = fill(Δt, N))
 
 ## we must specify a timestep and control variable for the NamedTrajectory.
 timestep = :Δt
 control = :u
 
 ## we can now create a `NamedTrajectory` object
-traj = NamedTrajectory(data; timestep=timestep, controls=control)
+traj = NamedTrajectory(data; timestep = timestep, controls = control)
 
 ## we can return the names of the stored variables
 traj.names
@@ -59,33 +55,19 @@ In many settings we will want to specify the problem data of our `NamedTrajector
 N = 10
 
 ## define the knot point data as a NamedTuple of matrices
-data = (
-    x = rand(3, N),
-    u = rand(2, N),
-    Δt = rand(N),
-)
+data = (x = rand(3, N), u = rand(2, N), Δt = rand(N))
 
 ## define initial values
-initial = (
-    x = [1.0, 0.0, 0.0],
-    u = [0.0, 0.0],
-)
+initial = (x = [1.0, 0.0, 0.0], u = [0.0, 0.0])
 
 ## define final value, here just on the control
-final = (
-    u = [0.0, 0.0],
-)
+final = (u = [0.0, 0.0],)
 
 ## define bounds
-bounds = (
-    x = 1.0,
-    u = 1.0
-)
+bounds = (x = 1.0, u = 1.0)
 
 ## set a goal for the state
-goal = (
-    x = [0.0, 0.0, 1.0],
-)
+goal = (x = [0.0, 0.0, 1.0],)
 
 ## we must specify a timestep and control variable for the NamedTrajectory
 timestep = :Δt
@@ -94,12 +76,12 @@ control = :u
 ## we can now create a `NamedTrajectory` object
 traj = NamedTrajectory(
     data;
-    timestep=timestep,
-    controls=control,
-    initial=initial,
-    final=final,
-    bounds=bounds,
-    goal=goal
+    timestep = timestep,
+    controls = control,
+    initial = initial,
+    final = final,
+    bounds = bounds,
+    goal = goal,
 )
 
 ## we can then show the bounds
@@ -171,4 +153,4 @@ For efficiency, a trajectory cannot add new data after it is constructed. Howeve
 
 =#
 
-update_bound!(traj, :x, 2.) # TODO: consider fleshing out this section with more examples of updating trajectory components, knot points, globals, bounds, etc.
+update_bound!(traj, :x, 2.0) # TODO: consider fleshing out this section with more examples of updating trajectory components, knot points, globals, bounds, etc.

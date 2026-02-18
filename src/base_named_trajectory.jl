@@ -17,7 +17,10 @@ function Base.show(io::IO, Z::NamedTrajectory)
     if isempty(Z.global_data)
         print(io, "N = ", Z.N, ", (", comp_str, ")")
     else
-        global_comp_str = join([format(n, Z.global_components[n]) for n in keys(Z.global_components)], ", ")
+        global_comp_str = join(
+            [format(n, Z.global_components[n]) for n in keys(Z.global_components)],
+            ", ",
+        )
         print(io, "N = ", Z.N, ", (", comp_str, "), (", global_comp_str, ")")
     end
 end
@@ -82,13 +85,17 @@ end
     - `Z::NamedTrajectory`: The trajectory from which the KnotPoint is taken.
     - `k::Int`: The timestep of the KnotPoint.
 """
-function StructKnotPoint.KnotPoint(
-    Z::NamedTrajectory,
-    k::Int
-)
+function StructKnotPoint.KnotPoint(Z::NamedTrajectory, k::Int)
     @assert 1 ≤ k ≤ Z.N
     timestep = Z[Z.timestep][k]
-    return KnotPoint(k, view(Z.data, :, k), timestep, Z.components, Z.names, Z.control_names)
+    return KnotPoint(
+        k,
+        view(Z.data, :, k),
+        timestep,
+        Z.components,
+        Z.names,
+        Z.control_names,
+    )
 end
 
 """
@@ -184,7 +191,7 @@ function Base.isequal(traj1::NamedTrajectory, traj2::NamedTrajectory)
             return false
         end
     end
-       
+
     return true
 end
 
@@ -211,14 +218,14 @@ function Base.:+(traj1::NamedTrajectory, traj2::NamedTrajectory)
     @assert traj1.names == traj2.names
     @assert traj1.dim == traj2.dim
     @assert traj1.N == traj2.N
-    return NamedTrajectory(traj1, datavec=traj1.datavec + traj2.datavec)
+    return NamedTrajectory(traj1, datavec = traj1.datavec + traj2.datavec)
 end
 
 function Base.:-(traj1::NamedTrajectory, traj2::NamedTrajectory)
     @assert traj1.names == traj2.names
     @assert traj1.dim == traj2.dim
     @assert traj1.N == traj2.N
-    return NamedTrajectory(traj1, datavec=traj1.datavec - traj2.datavec)
+    return NamedTrajectory(traj1, datavec = traj1.datavec - traj2.datavec)
 end
 
 # =========================================================================== #
@@ -226,17 +233,27 @@ end
 @testitem "equality" begin
     using Random
     data = randn(5, 10)
-    traj1 = NamedTrajectory(data, (x = 1:3, y=4:4, z=5:5), timestep=:z)
-    traj2 = NamedTrajectory(data[[5,4,1,2,3], :], (z=1:1, y=2:2, x=3:5), timestep=:z)
+    traj1 = NamedTrajectory(data, (x = 1:3, y = 4:4, z = 5:5), timestep = :z)
+    traj2 = NamedTrajectory(
+        data[[5, 4, 1, 2, 3], :],
+        (z = 1:1, y = 2:2, x = 3:5),
+        timestep = :z,
+    )
     @test traj1 == traj2
 
-   traj1 = NamedTrajectory(
-        data, (x = 1:3, y=4:4, z=5:5), timestep=:z,
-        global_data=[1.0, 2.0, 3.0], global_components=(a=1:2, b=3:3)
+    traj1 = NamedTrajectory(
+        data,
+        (x = 1:3, y = 4:4, z = 5:5),
+        timestep = :z,
+        global_data = [1.0, 2.0, 3.0],
+        global_components = (a = 1:2, b = 3:3),
     )
     traj2 = NamedTrajectory(
-        data, (x = 1:3, y=4:4, z=5:5), timestep=:z,
-        global_data=[3.0, 1.0, 2.0], global_components=(a=2:3, b=1:1)
+        data,
+        (x = 1:3, y = 4:4, z = 5:5),
+        timestep = :z,
+        global_data = [3.0, 1.0, 2.0],
+        global_components = (a = 2:3, b = 1:1),
     )
     @test traj1 == traj2
 end
@@ -248,14 +265,17 @@ end
     global_data1 = [1.0, 2.0, 3.0]
     global_data2 = copy(global_data1)
     traj1 = NamedTrajectory(
-        data1, (x = 1:3, y=4:4, z=5:5), timestep=:z,
-        global_data=global_data1, global_components=(a=1:2, b=3:3)
+        data1,
+        (x = 1:3, y = 4:4, z = 5:5),
+        timestep = :z,
+        global_data = global_data1,
+        global_components = (a = 1:2, b = 3:3),
     )
     traj2 = deepcopy(traj1)
     traj1.data .= 0
     @test traj1.data == zeros(size(data1))
     @test traj2.data == data2
-    
+
     traj1.global_data .= 0
     @test traj1.global_data == zeros(size(global_data1))
     @test traj2.global_data == global_data2
@@ -298,8 +318,11 @@ end
     data = randn(5, 10)
     global_data = [1.0, 2.0, 3.0]
     traj = NamedTrajectory(
-        data, (x = 1:3, y=4:4, z=5:5), timestep=:z,
-        global_data=global_data, global_components=(a=1:2, b=3:3)
+        data,
+        (x = 1:3, y = 4:4, z = 5:5),
+        timestep = :z,
+        global_data = global_data,
+        global_components = (a = 1:2, b = 3:3),
     )
     @test length(traj) == size(data, 1) * size(data, 2) + length(global_data)
 end
@@ -309,10 +332,13 @@ end
     data = randn(5, 10)
     global_data = [1.0, 2.0, 3.0]
     traj = NamedTrajectory(
-        data, (x = 1:3, y=4:4, z=5:5), timestep=:z,
-        global_data=global_data, global_components=(a=1:2, b=3:3)
+        data,
+        (x = 1:3, y = 4:4, z = 5:5),
+        timestep = :z,
+        global_data = global_data,
+        global_components = (a = 1:2, b = 3:3),
     )
-    
+
     @test vec(traj) == vcat(traj.datavec, traj.global_data)
 end
 

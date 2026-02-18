@@ -16,15 +16,15 @@ const NameType = Tuple{Vararg{Symbol}}
 # UnitRange{Int} enforces nonallocating @views with indexing
 const ComponentType = Tuple{Vararg{UnitRange{Int}}}
 
-const DataType{R <: Real} = Tuple{Vararg{R⃗}} where R⃗ <: AbstractVector{R}
+const DataType{R<:Real} = Tuple{Vararg{R⃗}} where {R⃗<:AbstractVector{R}}
 
 # Bound type is the type stored by the trajectory
-const BoundType{R <: Real} = Tuple{Vararg{Tuple{R⃗, R⃗}}} where R⃗ <: AbstractVector{R}
+const BoundType{R<:Real} = Tuple{Vararg{Tuple{R⃗,R⃗}}} where {R⃗<:AbstractVector{R}}
 
 # Allowed bounds at construction (elements of `bounds` NamedTuple)
-const ScalarBound = Union{R, Tuple{R, R}} where R <: Real
-const VectorBound = Union{R⃗, Tuple{R⃗, R⃗}} where R⃗ <: AbstractVector{<:Real}
-const AbstractBound = Union{ScalarBound, VectorBound}
+const ScalarBound = Union{R,Tuple{R,R}} where {R<:Real}
+const VectorBound = Union{R⃗,Tuple{R⃗,R⃗}} where {R⃗<:AbstractVector{<:Real}}
+const AbstractBound = Union{ScalarBound,VectorBound}
 
 # ---------------------------------------------------------------------------- #
 # Named Trajectory
@@ -40,37 +40,45 @@ This struct is designed to hold trajectory data in a named format, allowing for 
 NamedTrajectory is designed to make allocation-free access easy to write. The data can be updated after construction, but the fields cannot.
 """
 mutable struct NamedTrajectory{
-    R <: Real,
-    DNames, DTypes <: DimType,
-    BNames, BTypes <: BoundType{R},
-    INames, ITypes <: DataType{R},
-    FNames, FTypes <: DataType{R},
-    global_names, GTypes <: DataType{R},
-    CNames, CTypes <: ComponentType,
-    N <: NameType,
-    SN <: NameType,
-    CN <: NameType,
-    GDNames, GDTypes <: DimType,
-    GCNames, GCTypes <: ComponentType,
-    GN <: NameType,
+    R<:Real,
+    DNames,
+    DTypes<:DimType,
+    BNames,
+    BTypes<:BoundType{R},
+    INames,
+    ITypes<:DataType{R},
+    FNames,
+    FTypes<:DataType{R},
+    global_names,
+    GTypes<:DataType{R},
+    CNames,
+    CTypes<:ComponentType,
+    N<:NameType,
+    SN<:NameType,
+    CN<:NameType,
+    GDNames,
+    GDTypes<:DimType,
+    GCNames,
+    GCTypes<:ComponentType,
+    GN<:NameType,
 }
     datavec::AbstractVector{R}
     N::Int
     timestep::Symbol
     dim::Int
-    dims::NamedTuple{DNames, DTypes}
-    bounds::NamedTuple{BNames, BTypes}
-    initial::NamedTuple{INames, ITypes}
-    final::NamedTuple{FNames, FTypes}
-    goal::NamedTuple{global_names, GTypes}
-    components::NamedTuple{CNames, CTypes}
+    dims::NamedTuple{DNames,DTypes}
+    bounds::NamedTuple{BNames,BTypes}
+    initial::NamedTuple{INames,ITypes}
+    final::NamedTuple{FNames,FTypes}
+    goal::NamedTuple{global_names,GTypes}
+    components::NamedTuple{CNames,CTypes}
     names::N
     state_names::SN
     control_names::CN
     global_data::AbstractVector{R}
     global_dim::Int
-    global_dims::NamedTuple{GDNames, GDTypes}
-    global_components::NamedTuple{GCNames, GCTypes}
+    global_dims::NamedTuple{GDNames,GDTypes}
+    global_components::NamedTuple{GCNames,GCTypes}
     global_names::GN
 end
 
@@ -81,17 +89,17 @@ Construct a named trajectory from a data vector, components, and knot points.
 """
 function NamedTrajectory(
     datavec::AbstractVector{R},
-    comps::NamedTuple{N, <:ComponentType} where N,
+    comps::NamedTuple{N,<:ComponentType} where {N},
     N::Int;
-    timestep::Symbol=:Δt,
-    controls::Union{Symbol, NameType}=timestep,
-    bounds=NamedTuple(),
-    initial=NamedTuple(),
-    final=NamedTuple(),
-    goal=NamedTuple(),
-    global_data::AbstractVector{R}=R[],
-    global_components::NamedTuple{GN, <:ComponentType} where GN=NamedTuple(),
-) where R <: Real
+    timestep::Symbol = :Δt,
+    controls::Union{Symbol,NameType} = timestep,
+    bounds = NamedTuple(),
+    initial = NamedTuple(),
+    final = NamedTuple(),
+    goal = NamedTuple(),
+    global_data::AbstractVector{R} = R[],
+    global_components::NamedTuple{GN,<:ComponentType} where {GN} = NamedTuple(),
+) where {R<:Real}
     @assert :data ∉ keys(comps) "data is a reserved name"
     @assert isdisjoint(keys(comps), keys(global_components)) "components and global components should use unique names"
 
@@ -103,7 +111,7 @@ function NamedTrajectory(
     if timestep isa Symbol && !in(timestep, controls)
         controls = (controls..., timestep)
     end
-    
+
     names = Tuple(keys(comps))
     inspect_names(names, controls, keys(initial), keys(final), keys(goal), keys(bounds))
     states = Tuple(k for k ∈ names if k ∉ controls)
@@ -111,11 +119,11 @@ function NamedTrajectory(
     # save dims
     dims_pairs = [(k => length(v)) for (k, v) ∈ pairs(comps)]
     dims = NamedTuple(dims_pairs)
-    dim = sum(values(dims), init=0)
+    dim = sum(values(dims), init = 0)
     @assert dim * N == length(datavec) "Data vector length does not match components"
 
     # process and save bounds
-    bounds = get_bounds_from_dims(bounds, dims, dtype=R)
+    bounds = get_bounds_from_dims(bounds, dims, dtype = R)
 
     # check data
     inspect_dims_pairs(dims_pairs, bounds, initial, final, goal)
@@ -126,7 +134,7 @@ function NamedTrajectory(
     global_names = Tuple(keys(global_components))
 
     # check global data
-    @assert global_dim == sum(values(global_dims), init=0) "invalid global data dims"
+    @assert global_dim == sum(values(global_dims), init = 0) "invalid global data dims"
 
     return NamedTrajectory(
         datavec,
@@ -146,7 +154,7 @@ function NamedTrajectory(
         global_dim,
         global_dims,
         global_components,
-        global_names
+        global_names,
     )
 end
 
@@ -156,9 +164,9 @@ end
 Construct a `NamedTrajectory` from component data and global component data
 """
 function NamedTrajectory(
-    comps_data::NamedTuple{N, <:Tuple{Vararg{AbstractMatrix{<:Real}}}} where N,
-    gcomps_data::NamedTuple{GN, <:Tuple{Vararg{AbstractVector{<:Real}}}} where GN;
-    kwargs...
+    comps_data::NamedTuple{N,<:Tuple{Vararg{AbstractMatrix{<:Real}}}} where {N},
+    gcomps_data::NamedTuple{GN,<:Tuple{Vararg{AbstractVector{<:Real}}}} where {GN};
+    kwargs...,
 )
     # unpack data (promote type)
     data = vcat([val for (key, val) ∈ pairs(comps_data)]...)
@@ -187,10 +195,12 @@ function NamedTrajectory(
         R = promote_type(eltype(data), eltype(global_data))
 
         return NamedTrajectory(
-            vec(convert.(R, data)), comps, N; 
-            global_data=convert.(R, global_data), 
-            global_components=gcomps,
-            kwargs...
+            vec(convert.(R, data)),
+            comps,
+            N;
+            global_data = convert.(R, global_data),
+            global_components = gcomps,
+            kwargs...,
         )
     else
         # user can specify global data using `global_data`, `global_components`
@@ -204,14 +214,10 @@ end
 Construct a `NamedTrajectory` from component data.
 """
 function NamedTrajectory(
-    comps_data::NamedTuple{N, <:Tuple{Vararg{AbstractMatrix{<:Real}}}} where N;
-    kwargs...
+    comps_data::NamedTuple{N,<:Tuple{Vararg{AbstractMatrix{<:Real}}}} where {N};
+    kwargs...,
 )
-    return NamedTrajectory(
-        comps_data,
-        NamedTuple();
-        kwargs...
-    )
+    return NamedTrajectory(comps_data, NamedTuple(); kwargs...)
 end
 
 """
@@ -220,8 +226,8 @@ end
 Construct a `NamedTrajectory` from mixed Matrix/Vector component data.
 """
 function NamedTrajectory(
-    comps_data::NamedTuple{N, <:Tuple{Vararg{AbstractVecOrMat{<:Real}}}} where N; 
-    kwargs...
+    comps_data::NamedTuple{N,<:Tuple{Vararg{AbstractVecOrMat{<:Real}}}} where {N};
+    kwargs...,
 ) # where R <: Real
     vals = [v isa AbstractVector ? reshape(v, 1, :) : v for v ∈ values(comps_data)]
     comps_data = NamedTuple([(k => v) for (k, v) ∈ zip(keys(comps_data), vals)])
@@ -235,38 +241,41 @@ Construct a `NamedTrajectory` from an existing `NamedTrajectory`.
 """
 function NamedTrajectory(
     traj::NamedTrajectory;
-    datavec::AbstractVector{R}=traj.datavec,
-    components::NamedTuple{N, <:ComponentType} where N=traj.components,
-    N::Int=traj.N,
-    timestep::Symbol=traj.timestep,
-    controls::Union{Symbol, NameType}=traj.control_names,
-    bounds=traj.bounds,
-    initial=traj.initial,
-    final=traj.final,
-    goal=traj.goal,
-    global_data::AbstractVector{R}=traj.global_data,
-    global_components::NamedTuple{GN, <:ComponentType} where GN=traj.global_components,
-) where R <: Real
-    @assert length(datavec) == sum(length.(values(components)), init=0) * N "Data vector length does not match components * N"
-    @assert length(global_data) == sum(length.(values(global_components)), init=0) "Global data length does not match global components"
+    datavec::AbstractVector{R} = traj.datavec,
+    components::NamedTuple{N,<:ComponentType} where {N} = traj.components,
+    N::Int = traj.N,
+    timestep::Symbol = traj.timestep,
+    controls::Union{Symbol,NameType} = traj.control_names,
+    bounds = traj.bounds,
+    initial = traj.initial,
+    final = traj.final,
+    goal = traj.goal,
+    global_data::AbstractVector{R} = traj.global_data,
+    global_components::NamedTuple{GN,<:ComponentType} where {GN} = traj.global_components,
+) where {R<:Real}
+    @assert length(datavec) == sum(length.(values(components)), init = 0) * N "Data vector length does not match components * N"
+    @assert length(global_data) == sum(length.(values(global_components)), init = 0) "Global data length does not match global components"
 
     # Only collect lazy arrays and other non-strided AbstractVectors
     # Vector, SubArray, and other strided arrays can be used directly without copying
-    datavec_concrete = (datavec isa Vector || datavec isa SubArray) ? datavec : collect(datavec)
-    global_data_concrete = (global_data isa Vector || global_data isa SubArray) ? global_data : collect(global_data)
+    datavec_concrete =
+        (datavec isa Vector || datavec isa SubArray) ? datavec : collect(datavec)
+    global_data_concrete =
+        (global_data isa Vector || global_data isa SubArray) ? global_data :
+        collect(global_data)
 
     return NamedTrajectory(
         datavec_concrete,
         components,
         N;
-        timestep=timestep,
-        controls=controls,
-        bounds=bounds,
-        initial=initial,
-        final=final,
-        goal=goal,
-        global_data=global_data_concrete,
-        global_components=global_components,
+        timestep = timestep,
+        controls = controls,
+        bounds = bounds,
+        initial = initial,
+        final = final,
+        goal = goal,
+        global_data = global_data_concrete,
+        global_components = global_components,
     )
 end
 
@@ -277,9 +286,9 @@ Construct a `NamedTrajectory` from a data matrix and components.
 """
 function NamedTrajectory(
     data::AbstractMatrix{R},
-    comps::NamedTuple{N, <:ComponentType} where N;
-    kwargs...
-) where R <: Real
+    comps::NamedTuple{N,<:ComponentType} where {N};
+    kwargs...,
+) where {R<:Real}
     N = size(data, 2)
     datavec = vec(data)
     return NamedTrajectory(datavec, comps, N; kwargs...)
@@ -296,10 +305,10 @@ Process `bounds` from allowed types using `dims` and convert to `dtype`.
 """
 function get_bounds_from_dims(
     bounds::NamedTuple,
-    dims::NamedTuple{<:Any, <:DimType};
-    dtype=Float64
-)   
-    bounds_dict = OrderedDict{Symbol, AbstractBound}(pairs(bounds))
+    dims::NamedTuple{<:Any,<:DimType};
+    dtype = Float64,
+)
+    bounds_dict = OrderedDict{Symbol,AbstractBound}(pairs(bounds))
     for (name, bound) ∈ bounds_dict
         @assert bound isa AbstractBound
 
@@ -307,21 +316,19 @@ function get_bounds_from_dims(
         if bound isa Real
             vbound = fill(convert(dtype, bound), bdim)
             bounds_dict[name] = (-vbound, vbound)
-        elseif bound isa Tuple{<:Real, <:Real}
-            bounds_dict[name] = (
-                fill(convert(dtype, bound[1]), bdim), 
-                fill(convert(dtype, bound[2]), bdim)
-            )
+        elseif bound isa Tuple{<:Real,<:Real}
+            bounds_dict[name] =
+                (fill(convert(dtype, bound[1]), bdim), fill(convert(dtype, bound[2]), bdim))
         elseif bound isa AbstractVector{<:Real}
-            if length(bound) != bdim 
+            if length(bound) != bdim
                 throw(ArgumentError("Invalid bound $name: $(length(bound)) != $bdim"))
             end
             bounds_dict[name] = (-convert.(dtype, bound), convert.(dtype, bound))
-        elseif bound isa Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}}
-            if length(bound[1]) != bdim 
+        elseif bound isa Tuple{<:AbstractVector{<:Real},<:AbstractVector{<:Real}}
+            if length(bound[1]) != bdim
                 throw(ArgumentError("Invalid bound $name: $(length(bound[1])) != $bdim"))
             end
-            if length(bound[2]) != bdim 
+            if length(bound[2]) != bdim
                 throw(ArgumentError("Invalid bound $name: $(length(bound[2])) != $bdim"))
             end
             bounds_dict[name] = (convert.(dtype, bound[1]), convert.(dtype, bound[2]))
@@ -368,12 +375,12 @@ end
 Check for proper formatting of trajectory components.
 """
 function inspect_dims_pairs(
-    dims_pairs::Vector{Pair{Symbol, Int}},
-    bounds::NamedTuple{bname, <:BoundType{R}} where bname,
-    initial::NamedTuple{iname, <:DataType{R}} where iname,
-    final::NamedTuple{fname, <:DataType{R}} where fname,
-    goal::NamedTuple{gname, <:DataType{R}} where gname
-) where R <: Real
+    dims_pairs::Vector{Pair{Symbol,Int}},
+    bounds::NamedTuple{bname,<:BoundType{R}} where {bname},
+    initial::NamedTuple{iname,<:DataType{R}} where {iname},
+    final::NamedTuple{fname,<:DataType{R}} where {fname},
+    goal::NamedTuple{gname,<:DataType{R}} where {gname},
+) where {R<:Real}
     dims_tuple = NamedTuple(dims_pairs)
     for k in keys(bounds)
         @assert length(bounds[k][1]) == dims_tuple[k] "Bad bound for $k: ||$(bounds[k])|| ≠ $(dims_tuple[k])"
@@ -395,14 +402,14 @@ end
     n = 5
     N = 10
     data = randn(n, N)
-    traj = NamedTrajectory(data, (x = 1:3, y=4:4, Δt=5:5))
+    traj = NamedTrajectory(data, (x = 1:3, y = 4:4, Δt = 5:5))
     @test traj.data ≈ data
     @test traj.timestep == :Δt
     @test traj.dim == n
     @test traj.N == N
     @test traj.names == (:x, :y, :Δt)
 
-    traj = NamedTrajectory(data, (x = 1:3, y=4:4, z=5:5), timestep=:z)
+    traj = NamedTrajectory(data, (x = 1:3, y = 4:4, z = 5:5), timestep = :z)
     @test traj.data ≈ data
     @test traj.timestep == :z
     @test traj.dim == n
@@ -417,30 +424,18 @@ end
     dt = 0.1
 
     dim = 6
-    comps_data = (
-        x = rand(3, N),
-        u = rand(2, N),
-        Δt = fill(dt, 1, N),
-    )
+    comps_data = (x = rand(3, N), u = rand(2, N), Δt = fill(dt, 1, N))
 
     timestep = :Δt
     control = :u
 
     # some global params as a NamedTuple
     global_dim = 2
-    gcomps_data = (
-        α = rand(1),
-        β = rand(1)
-    )
+    gcomps_data = (α = rand(1), β = rand(1))
 
     # test global
     # ---
-    traj = NamedTrajectory(
-        comps_data,
-        gcomps_data;
-        timestep=timestep, 
-        controls=control
-    )
+    traj = NamedTrajectory(comps_data, gcomps_data; timestep = timestep, controls = control)
 
     @test traj.N == N
     @test traj.dim == dim
@@ -453,12 +448,13 @@ end
     comps_res = NamedTuple([(k => traj.data[v, :]) for (k, v) in pairs(traj.components)])
     @test comps_res == comps_data
 
-    gres = NamedTuple([(k => traj.global_data[v]) for (k, v) in pairs(traj.global_components)])
+    gres =
+        NamedTuple([(k => traj.global_data[v]) for (k, v) in pairs(traj.global_components)])
     @test gres == gcomps_data
 
     # ignore global
     # ---
-    traj = NamedTrajectory(comps_data, controls=control)
+    traj = NamedTrajectory(comps_data, controls = control)
 
     @test traj.N == N
     @test traj.dim == dim
@@ -467,7 +463,7 @@ end
     @test traj.control_names == (:u, :Δt)
     @test isempty(traj.global_names)
 
-    comps_res = NamedTuple([(k => traj.data[v, :]) for (k, v) in pairs(traj.components)]) 
+    comps_res = NamedTuple([(k => traj.data[v, :]) for (k, v) in pairs(traj.components)])
     @test comps_res == comps_data
 
     @test isempty(traj.global_data)
@@ -486,9 +482,9 @@ end
     zval = 1
     wval = [5, 6]
     traj = NamedTrajectory(
-        data, 
-        (Δt=1:1, x=2:4, y=5:5, z=6:8, w=9:10),
-        bounds=(x=xtuple, y=ytuple, z=zval, w=wval)
+        data,
+        (Δt = 1:1, x = 2:4, y = 5:5, z = 6:8, w = 9:10),
+        bounds = (x = xtuple, y = ytuple, z = zval, w = wval),
     )
     @test traj.bounds.x == xtuple
     @test traj.bounds.y == ([ylow], [yup])
@@ -502,30 +498,26 @@ end
     N = 10
     x_dim = 2
     u_dim = 1
-    
+
     base_traj = NamedTrajectory(
-        (
-            x = randn(x_dim, N),
-            u = randn(u_dim, N),
-            Δt = fill(0.1, N),
-        );
-        controls=:u,
-        timestep=:Δt,
+        (x = randn(x_dim, N), u = randn(u_dim, N), Δt = fill(0.1, N));
+        controls = :u,
+        timestep = :Δt,
     )
-    
+
     # Test 1: Regular Vector - should not reallocate
     vec1 = copy(base_traj.datavec)
-    traj1 = NamedTrajectory(base_traj; datavec=vec1)
+    traj1 = NamedTrajectory(base_traj; datavec = vec1)
     @test traj1.datavec === vec1  # Same object, no allocation
-    
+
     # Test 2: View (SubArray) - can be stored directly without copying
     parent_vec = vcat(base_traj.datavec, randn(10))
     view_vec = view(parent_vec, 1:length(base_traj.datavec))
-    traj2 = NamedTrajectory(base_traj; datavec=view_vec)
+    traj2 = NamedTrajectory(base_traj; datavec = view_vec)
     @test traj2.datavec isa SubArray
     @test traj2.datavec === view_vec  # Same view, no copy
     @test parent(traj2.datavec) === parent_vec  # Still referencing same parent
-    
+
     # Test 3: Values should match regardless of input type
     @test traj1.x == base_traj.x
     @test traj2.x == base_traj.x

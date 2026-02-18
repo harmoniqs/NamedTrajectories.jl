@@ -36,8 +36,8 @@ function derivative(X::AbstractMatrix, Δt::AbstractVecOrMat)
 
     dX[:, 1] = (X[:, 2] - X[:, 1]) / Δt[1]
 
-    for t = axes(X, 2)[2:end-1]
-        Δx = X[:, t + 1] - X[:, t]
+    for t in axes(X, 2)[2:(end-1)]
+        Δx = X[:, t+1] - X[:, t]
         h = Δt[t]
         dX[:, t] = Δx / h
     end
@@ -58,7 +58,7 @@ Compute the integral of the data matrix `X`.
 function integral(X::AbstractMatrix, Δt::AbstractVector)
     ∫X = similar(X)
     ∫X[:, 1] = zeros(size(X, 1))
-    for t = axes(X, 2)[2:end]
+    for t in axes(X, 2)[2:end]
         # trapezoidal rule
         ∫X[:, t] = ∫X[:, t-1] + (X[:, t] + X[:, t-1])/2 * Δt[t-1]
     end

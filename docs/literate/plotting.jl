@@ -38,7 +38,7 @@ using NamedTrajectories
 ## define the number timestamps
 N = 100
 Δt = 0.1
-ts = [0:N-1...] * Δt
+ts = [0:(N-1)...] * Δt
 
 ## define sinusoidal state trajectories
 X = zeros(3, N)
@@ -49,23 +49,18 @@ X[3, :] = sin.(9 * 2π * ts / (2 * (N - 1) * Δt))
 ## define gaussian shaped controls
 U = stack(
     [
-        exp.(-((ts .- ts[length(ts)÷3]) / 2.0).^2) .* sin.(5.0 * ts),
-        exp.(-((ts .- ts[2(length(ts)÷3)]) / 1.5).^2) .* sin.(4.0 * ts)
+        exp.(-((ts .- ts[length(ts)÷3]) / 2.0) .^ 2) .* sin.(5.0 * ts),
+        exp.(-((ts .- ts[2(length(ts)÷3)]) / 1.5) .^ 2) .* sin.(4.0 * ts),
     ];
-    dims=1
+    dims = 1,
 )
-V = exp.(-((ts .- ts[length(ts)÷2]) ./ 1.5).^2) .* sin.(6.0 * ts)
+V = exp.(-((ts .- ts[length(ts)÷2]) ./ 1.5) .^ 2) .* sin.(6.0 * ts)
 
 ## create the trajectory
 traj = NamedTrajectory(
-    (
-        x=X,
-        u=U,
-        v=V,
-        Δt=fill(Δt, N),
-    );
-    timestep=:Δt,
-    controls=(:u, :v)
+    (x = X, u = U, v = V, Δt = fill(Δt, N));
+    timestep = :Δt,
+    controls = (:u, :v),
 )
 
 ## plot the trajectory
@@ -89,18 +84,16 @@ plot(traj, [:x, :u])
 
 transformations = [(:x => x -> abs.(x))]
 
-plot(traj, [:x]; transformations=transformations)
+plot(traj, [:x]; transformations = transformations)
 
 # We can also pass multiple transformations to the same component, with selective labels and titles:
 
 ## define the transformations
-transformations = [
-    (:x => x -> [x[1] + x[2], x[3] - x[2]]),
-    (:x => x -> [x[1] - x[2], x[3] + x[2]])
-]
+transformations =
+    [(:x => x -> [x[1] + x[2], x[3] - x[2]]), (:x => x -> [x[1] - x[2], x[3] + x[2]])]
 
 ## plot the trajectory, with only the transformation and the `u` control
-plot(traj, [:u]; transformations=transformations,)
+plot(traj, [:u]; transformations = transformations)
 
 # ## Merging legend labels
 
@@ -115,14 +108,14 @@ merging per component.
 =#
 
 ## merge all legend labels
-plot(traj, [:x, :u]; merge_labels=true)
+plot(traj, [:x, :u]; merge_labels = true)
 
 #
 
 ## merge only the state labels, keep control labels separate
-plot(traj, [:x, :u]; merge_labels=[true, false])
+plot(traj, [:x, :u]; merge_labels = [true, false])
 
 # The same option is available for transformation legends via `merge_transformation_labels`:
 
 transformations = [(:x => x -> abs.(x))]
-plot(traj, [:u]; transformations=transformations, merge_transformation_labels=true)
+plot(traj, [:u]; transformations = transformations, merge_transformation_labels = true)
