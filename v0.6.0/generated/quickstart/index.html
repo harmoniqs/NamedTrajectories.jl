@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Quickstart Guide · NamedTrajectories.jl</title><meta name="title" content="Quickstart Guide · NamedTrajectories.jl"/><meta property="og:title" content="Quickstart Guide · NamedTrajectories.jl"/><meta property="twitter:title" content="Quickstart Guide · NamedTrajectories.jl"/><meta name="description" content="Documentation for NamedTrajectories.jl."/><meta property="og:description" content="Documentation for NamedTrajectories.jl."/><meta property="twitter:description" content="Documentation for NamedTrajectories.jl."/><meta property="og:url" content="https://docs.harmoniqs.co/NamedTrajectories.jl/generated/quickstart/"/><meta property="twitter:url" content="https://docs.harmoniqs.co/NamedTrajectories.jl/generated/quickstart/"/><link rel="canonical" href="https://docs.harmoniqs.co/NamedTrajectories.jl/generated/quickstart/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="NamedTrajectories.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">NamedTrajectories.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li class="is-active"><a class="tocitem" href>Quickstart Guide</a><ul class="internal"><li><a class="tocitem" href="#Getting-set-up"><span>Getting set up</span></a></li><li><a class="tocitem" href="#Creating-a-variable-timestep-NamedTrajectory"><span>Creating a variable-timestep <code>NamedTrajectory</code></span></a></li><li><a class="tocitem" href="#Adding-more-problem-data"><span>Adding more problem data</span></a></li><li><a class="tocitem" href="#Retrieving-data"><span>Retrieving data</span></a></li><li><a class="tocitem" href="#Retrieving-metadata"><span>Retrieving metadata</span></a></li><li><a class="tocitem" href="#Updating-problem-data"><span>Updating problem data</span></a></li></ul></li><li><span class="tocitem">Manual</span><ul><li><a class="tocitem" href="../man/constructors/">Constructors</a></li><li><a class="tocitem" href="../man/params_in_struct/">Parameters</a></li><li><a class="tocitem" href="../man/modifying/">Modifying trajectories</a></li></ul></li><li><a class="tocitem" href="../plotting/">Plotting</a></li><li><a class="tocitem" href="../../lib/">Library</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Quickstart Guide</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Quickstart Guide</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/harmoniqs/NamedTrajectories.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/harmoniqs/NamedTrajectories.jl/blob/main/docs/literate/quickstart.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Quickstart-Guide"><a class="docs-heading-anchor" href="#Quickstart-Guide">Quickstart Guide</a><a id="Quickstart-Guide-1"></a><a class="docs-heading-anchor-permalink" href="#Quickstart-Guide" title="Permalink"></a></h1><h2 id="Getting-set-up"><a class="docs-heading-anchor" href="#Getting-set-up">Getting set up</a><a id="Getting-set-up-1"></a><a class="docs-heading-anchor-permalink" href="#Getting-set-up" title="Permalink"></a></h2><p>To install <code>NamedTrajectories</code> simply enter the package manager in the Julia REPL with <code>]</code> and run</p><pre><code class="language-julia hljs">pkg&gt; add NamedTrajectories</code></pre><p>Then just use the package as usual with</p><pre><code class="language-julia hljs">using NamedTrajectories</code></pre><p>For the following examples let&#39;s work with a simple trajectory</p><p class="math-container">\[\qty{z_k = \mqty(x_k \\ u_k)}_{k=1:N}\]</p><p>where <span>$x_k$</span> is the state and <span>$u_k$</span> is the control at a time indexed by <span>$k$</span>. Together <span>$z_k$</span> is referred to as a <em>knot point</em> and a <code>NamedTrajectory</code> essentially just stores a collection of knot points and makes it easy to access the state and control variables.</p><h2 id="Creating-a-variable-timestep-NamedTrajectory"><a class="docs-heading-anchor" href="#Creating-a-variable-timestep-NamedTrajectory">Creating a variable-timestep <code>NamedTrajectory</code></a><a id="Creating-a-variable-timestep-NamedTrajectory-1"></a><a class="docs-heading-anchor-permalink" href="#Creating-a-variable-timestep-NamedTrajectory" title="Permalink"></a></h2><p>Here we will create a <code>NamedTrajectory</code> with a variable timestep.</p><pre><code class="language-julia hljs"># define the number of timesteps
+N = 10
+Δt = 0.1
+
+# define the knot point data as a NamedTuple of matrices
+data = (
+    x = rand(3, N),
+    u = rand(2, N),
+    Δt = fill(Δt, N),
+)
+
+# we must specify a timestep and control variable for the NamedTrajectory.
+timestep = :Δt
+control = :u
+
+# we can now create a `NamedTrajectory` object
+traj = NamedTrajectory(data; timestep=timestep, controls=control)
+
+# we can return the names of the stored variables
+traj.names</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(:x, :u, :Δt)</code></pre><h2 id="Adding-more-problem-data"><a class="docs-heading-anchor" href="#Adding-more-problem-data">Adding more problem data</a><a id="Adding-more-problem-data-1"></a><a class="docs-heading-anchor-permalink" href="#Adding-more-problem-data" title="Permalink"></a></h2><p>In many settings we will want to specify the problem data of our <code>NamedTrajectory</code> – e.g. bounds, initial values, final values, and goal values.</p><pre><code class="language-julia hljs"># define the number of timesteps
+N = 10
+
+# define the knot point data as a NamedTuple of matrices
+data = (
+    x = rand(3, N),
+    u = rand(2, N),
+    Δt = rand(N),
+)
+
+# define initial values
+initial = (
+    x = [1.0, 0.0, 0.0],
+    u = [0.0, 0.0],
+)
+
+# define final value, here just on the control
+final = (
+    u = [0.0, 0.0],
+)
+
+# define bounds
+bounds = (
+    x = 1.0,
+    u = 1.0
+)
+
+# set a goal for the state
+goal = (
+    x = [0.0, 0.0, 1.0],
+)
+
+# we must specify a timestep and control variable for the NamedTrajectory
+timestep = :Δt
+control = :u
+
+# we can now create a `NamedTrajectory` object
+traj = NamedTrajectory(
+    data;
+    timestep=timestep,
+    controls=control,
+    initial=initial,
+    final=final,
+    bounds=bounds,
+    goal=goal
+)
+
+# we can then show the bounds
+traj.bounds</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(x = ([-1.0, -1.0, -1.0], [1.0, 1.0, 1.0]), u = ([-1.0, -1.0], [1.0, 1.0]))</code></pre><h2 id="Retrieving-data"><a class="docs-heading-anchor" href="#Retrieving-data">Retrieving data</a><a id="Retrieving-data-1"></a><a class="docs-heading-anchor-permalink" href="#Retrieving-data" title="Permalink"></a></h2><p>There are a number of ways to access data, for example</p><pre><code class="language-julia hljs">traj.x</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">3×10 view(reshape(view(::Vector{Float64}, :), 6, 10), 1:3, :) with eltype Float64:
+ 0.633758  0.026881  0.903829  0.0130615  …  0.353431  0.657725  0.982297
+ 0.609019  0.5819    0.145054  0.0466733     0.921774  0.218019  0.180686
+ 0.40259   0.588288  0.130456  0.217653      0.683141  0.936255  0.00645958</code></pre><p>returns the data matrix associated with the state variable <code>x</code>.</p><pre><code class="language-julia hljs">traj.data</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">6×10 reshape(view(::Vector{Float64}, :), 6, 10) with eltype Float64:
+ 0.633758   0.026881   0.903829  0.0130615  …  0.353431  0.657725  0.982297
+ 0.609019   0.5819     0.145054  0.0466733     0.921774  0.218019  0.180686
+ 0.40259    0.588288   0.130456  0.217653      0.683141  0.936255  0.00645958
+ 0.0801813  0.149342   0.507856  0.651161      0.294921  0.77095   0.677042
+ 0.986367   0.0171547  0.852592  0.0234213     0.221928  0.551126  0.881592
+ 0.244066   0.117241   0.909922  0.70756    …  0.54136   0.107054  0.381913</code></pre><p>returns the all of the data as a matrix where each column is a knot point.</p><pre><code class="language-julia hljs">traj.datavec</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">60-element Vector{Float64}:
+ 0.6337579561037494
+ 0.6090186144875195
+ 0.4025900629332928
+ 0.08018127514149542
+ 0.9863670324799991
+ 0.2440658864832732
+ 0.02688100694891027
+ 0.5818997781924
+ 0.5882876815086772
+ 0.14934206969170594
+ ⋮
+ 0.7709495947819666
+ 0.5511256199982363
+ 0.10705394587113892
+ 0.9822970409784445
+ 0.18068552467070498
+ 0.006459583702931204
+ 0.6770423437203769
+ 0.8815920417779524
+ 0.38191274005731946</code></pre><p>returns the all of the data as a view of the data matrix as a vector – useful for passing data to solvers.</p><pre><code class="language-julia hljs">traj[1]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">KnotPoint{Float64, (:x, :u, :Δt), Tuple{UnitRange{Int64}, UnitRange{Int64}, UnitRange{Int64}}, Tuple{Symbol, Symbol, Symbol}, Tuple{Symbol, Symbol}}(1, [0.6337579561037494, 0.6090186144875195, 0.4025900629332928, 0.08018127514149542, 0.9863670324799991, 0.2440658864832732], 0.2440658864832732, (x = 1:3, u = 4:5, Δt = 6:6), (:x, :u, :Δt), (:u, :Δt))</code></pre><p>returns a <code>KnotPoint</code>.</p><pre><code class="language-julia hljs">traj[1].x</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">3-element view(reshape(view(::Vector{Float64}, :), 6, 10), 1:3, 1) with eltype Float64:
+ 0.6337579561037494
+ 0.6090186144875195
+ 0.4025900629332928</code></pre><p>returns the state at the first knot point.</p><pre><code class="language-julia hljs">get_times(traj)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">10-element Vector{Float64}:
+ 0.0
+ 0.2440658864832732
+ 0.36130644632459663
+ 1.2712282112618163
+ 1.9787878328565487
+ 2.3318779310347786
+ 2.7467943837952573
+ 3.046559394513451
+ 3.5879193022838924
+ 3.6949732481550313</code></pre><p>returns the times of the knot points.</p><pre><code class="language-julia hljs">get_timesteps(traj)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">10-element reshape(view(reshape(view(::Vector{Float64}, :), 6, 10), 6:6, :), 10) with eltype Float64:
+ 0.2440658864832732
+ 0.11724055984132342
+ 0.9099217649372197
+ 0.7075596215947325
+ 0.3530900981782298
+ 0.4149164527604787
+ 0.29976501071819384
+ 0.5413599077704416
+ 0.10705394587113892
+ 0.38191274005731946</code></pre><p>returns the timesteps of the knot points, as vector.</p><h2 id="Retrieving-metadata"><a class="docs-heading-anchor" href="#Retrieving-metadata">Retrieving metadata</a><a id="Retrieving-metadata-1"></a><a class="docs-heading-anchor-permalink" href="#Retrieving-metadata" title="Permalink"></a></h2><p>We can also retrieve metadata about the trajectory, for example</p><pre><code class="language-julia hljs">traj.names</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(:x, :u, :Δt)</code></pre><p>returns the names of the variables stored in the trajectory.</p><pre><code class="language-julia hljs">traj.dims</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(x = 3, u = 2, Δt = 1)</code></pre><p>returns the dimensions of the variables stored in the trajectory.</p><pre><code class="language-julia hljs">traj.N</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">10</code></pre><p>returns the number of knot points in the trajectory.</p><pre><code class="language-julia hljs">traj.components</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(x = 1:3, u = 4:5, Δt = 6:6)</code></pre><p>returns the components of the trajectory.</p><h2 id="Updating-problem-data"><a class="docs-heading-anchor" href="#Updating-problem-data">Updating problem data</a><a id="Updating-problem-data-1"></a><a class="docs-heading-anchor-permalink" href="#Updating-problem-data" title="Permalink"></a></h2><p>The <code>NamedTrajectory</code> can be updated by accessing fields and replacing the data.</p><p>We also have <code>update!</code> to update trajectory components, and  <code>update_bound!</code>, which allows you to pass in the same kinds of bounds available at construction (e.g., an <code>Int</code> or <code>Tuple</code>). The bound will get shaped to match the trajectory component dimensions just like at construction. These methods cannot be used to update non-existent bounds or components.</p><p>For efficiency, a trajectory cannot add new data after it is constructed. However, we have convenience methods like <code>add_component</code> that build a new trajectory with added data.</p><pre><code class="language-julia hljs">update_bound!(traj, :x, 2.) # TODO: consider fleshing out this section with more examples of updating trajectory components, knot points, globals, bounds, etc.</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« Home</a><a class="docs-footer-nextpage" href="../man/constructors/">Constructors »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Wednesday 18 February 2026 08:06">Wednesday 18 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
