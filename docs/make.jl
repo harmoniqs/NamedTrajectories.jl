@@ -8,20 +8,17 @@ pages = [
     "Manual" => [
         "generated/man/constructors.md",
         "generated/man/params_in_struct.md",
-        "generated/man/modifying.md"
+        "generated/man/modifying.md",
     ],
     "Plotting" => "generated/plotting.md",
-    "Library" => "lib.md"
+    "Library" => "lib.md",
 ]
 
 generate_docs(
     @__DIR__,
     "NamedTrajectories",
-    [
-        NamedTrajectories,
-        Base.get_extension(NamedTrajectories, :InterpolationsExt)
-    ],
+    [NamedTrajectories, Base.get_extension(NamedTrajectories, :InterpolationsExt)],
     pages;
     format_kwargs = (canonical = "https://docs.harmoniqs.co/NamedTrajectories.jl",),
-    versions = ["dev" => "dev", "stable" => "v^", "v#.#"]
+    versions = ["dev" => "dev", "stable" => "v^", "v#.#"],
 )
