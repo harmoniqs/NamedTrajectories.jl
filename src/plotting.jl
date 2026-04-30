@@ -20,7 +20,7 @@ function trajectoryplot! end
 
 Plot a `NamedTrajectory` and return a `Figure`.
 """
-function plot_trajectory end 
+function plot_trajectory end
 
 """
     plot_name(traj::NamedTrajectory, name::Symbol; kwargs...)

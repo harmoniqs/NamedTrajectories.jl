@@ -1,16 +1,18 @@
 module PlottingExt
 
 using NamedTrajectories
-import NamedTrajectories: trajectoryplot, trajectoryplot!, plot_trajectory, plot_name, plot_name!
+import NamedTrajectories:
+    trajectoryplot, trajectoryplot!, plot_trajectory, plot_name, plot_name!
 
 # recommended to use Makie for ext
 using Makie
 import Makie: plot
+using LaTeXStrings
 using TestItems
 
-const AbstractTransform = Union{<:Function, AbstractVector{<:Function}}
+const AbstractTransform = Union{<:Function,AbstractVector{<:Function}}
 
-const TrajType = Union{NamedTrajectory, Observable{<:NamedTrajectory}}
+const TrajType = Union{NamedTrajectory,Observable{<:NamedTrajectory}}
 
 # -------------------------------------------------------------- #
 # Plot trajectories with PointBased conversion
@@ -20,7 +22,7 @@ function Makie.convert_arguments(
     P::Makie.PointBased,
     traj::NamedTrajectory,
     comp::Int;
-    indices::AbstractVector{Int}=1:traj.N
+    indices::AbstractVector{Int} = 1:traj.N,
 )
     times = get_times(traj)[indices]
     positions = map(zip(indices, times)) do (i, t)
@@ -34,11 +36,11 @@ end
 # -------------------------------------------------------------- #
 
 function Makie.convert_arguments(
-    P::Type{<:Series}, 
+    P::Type{<:Series},
     traj::NamedTrajectory,
     name::Symbol;
-    transform::Union{Nothing, AbstractTransform}=nothing,
-    indices::AbstractVector{Int}=1:traj.N
+    transform::Union{Nothing,AbstractTransform} = nothing,
+    indices::AbstractVector{Int} = 1:traj.N,
 )
     if !isnothing(transform)
         transform_data = try
@@ -64,7 +66,8 @@ function Makie.convert_arguments(
 end
 
 # Allow transform to be passed to the plotting function
-Makie.used_attributes(::Type{<:Series}, ::NamedTrajectory, ::Symbol) = (:transform, :indices)
+Makie.used_attributes(::Type{<:Series}, ::NamedTrajectory, ::Symbol) =
+    (:transform, :indices)
 
 # -------------------------------------------------------------- #
 # Plot trajectories by name with recipe
@@ -84,7 +87,7 @@ Makie.used_attributes(::Type{<:Series}, ::NamedTrajectory, ::Symbol) = (:transfo
     label = nothing
     merge = false
     transform = nothing
-    
+
     # added to avoid errors from old usage
     free_time = false
 end
@@ -98,7 +101,7 @@ function Makie.plot!(p::TrajectoryPlot)
     # Time axis (shared across all)
     times = lift(traj, p.indices) do t, idxs
         Δt = t[t.timestep]
-        ts = [0.0; cumsum(vec(Δt)[1:end-1])]
+        ts = [0.0; cumsum(vec(Δt)[1:(end-1)])]
         return isnothing(idxs) ? ts : ts[idxs]
     end
 
@@ -107,7 +110,7 @@ function Makie.plot!(p::TrajectoryPlot)
         # Initial values to get dimensions (assume fixed during observable updates)
         init_traj = to_value(traj)
         init_data = init_traj[comp]
-        
+
         # Apply initial transform to get K
         trans = to_value(p.transform)
         if isnothing(trans)
@@ -118,13 +121,18 @@ function Makie.plot!(p::TrajectoryPlot)
             val = trans[1](init_data[:, 1])
             K = length(val)
         else
-            K = size(stack(trans.(eachcol(init_data))), 1)
+            transformed = trans.(eachcol(init_data))
+            if !isa(transformed[1], AbstractVector)
+                K = length(transformed[1])
+            else
+                K = size(stack(transformed), 1)
+            end
         end
 
         colors = Makie.resample_cmap(to_value(p.color), max(2, K))
-        
+
         # Plot each dimension of the component
-        for i in 1:K
+        for i = 1:K
             # Lift data for this specific dimension
             data_i = lift(traj, p.transform, p.indices) do t, tr, idxs
                 d = t[comp]
@@ -136,7 +144,7 @@ function Makie.plot!(p::TrajectoryPlot)
                         d = stack(tr.(eachcol(d)))
                     end
                 end
-                
+
                 val = if d isa AbstractVector
                     d
                 else
@@ -148,31 +156,49 @@ function Makie.plot!(p::TrajectoryPlot)
             # Generate label
             lbl = lift(p.label, p.merge) do base_label, m
                 if base_label isa AbstractVector
-                     # If label is a vector, assume it matches K dimensions
-                     return i <= length(base_label) ? base_label[i] : string(comp)
+                    # If label is a vector, assume it matches K dimensions
+                    return i <= length(base_label) ? base_label[i] : latexstring(string(comp))
                 end
 
-                b = isnothing(base_label) ? string(comp) : base_label
-                if m || K == 1
-                    return b
+                if isnothing(base_label)
+                    b = string(comp)
+                elseif base_label isa LaTeXString
+                    if m || K == 1
+                        return base_label
+                    end
+                    # Extract inner content from $...$ wrapping
+                    s = String(base_label)
+                    b = startswith(s, "\$") && endswith(s, "\$") ? s[2:(end-1)] : s
                 else
-                    return "$(b)$(i)"
+                    b = base_label
+                end
+
+                if m || K == 1
+                    return latexstring(b)
+                else
+                    return latexstring(b, "_{", i, "}")
                 end
             end
 
-            lines!(p, times, data_i, 
-                label = lbl, 
-                color = colors[i], 
+            lines!(
+                p,
+                times,
+                data_i,
+                label = lbl,
+                color = colors[i],
                 linewidth = p.linewidth,
-                linestyle = p.linestyle
+                linestyle = p.linestyle,
             )
-            
+
             # Optional Scatter
             if to_value(p.markersize) > 0
-                scatter!(p, times, data_i,
+                scatter!(
+                    p,
+                    times,
+                    data_i,
                     color = colors[i],
                     marker = p.marker,
-                    markersize = p.markersize
+                    markersize = p.markersize,
                 )
             end
         end
@@ -191,11 +217,24 @@ function NamedTrajectories.plot_name!(ax::Axis, traj::TrajType, name::Symbol; kw
     trajectoryplot!(ax, traj, name; kwargs...)
 end
 
-function NamedTrajectories.plot_name!(ax::Axis, traj::TrajType, input::Symbol, output::AbstractString, transform; kwargs...)
+function NamedTrajectories.plot_name!(
+    ax::Axis,
+    traj::TrajType,
+    input::Symbol,
+    output::AbstractString,
+    transform;
+    kwargs...,
+)
     trajectoryplot!(ax, traj, input, output, transform; kwargs...)
 end
 
-function NamedTrajectories.plot_name!(ax::Axis, traj::TrajType, input::Symbol, transform; kwargs...)
+function NamedTrajectories.plot_name!(
+    ax::Axis,
+    traj::TrajType,
+    input::Symbol,
+    transform;
+    kwargs...,
+)
     trajectoryplot!(ax, traj, input, transform; kwargs...)
 end
 
@@ -207,24 +246,55 @@ end
 # Trajectory Plot methods
 # -------------------------------------------------------------- #
 
-function NamedTrajectories.trajectoryplot!(ax::Axis, traj::TrajType, name::Symbol; kwargs...)
+function NamedTrajectories.trajectoryplot!(
+    ax::Axis,
+    traj::TrajType,
+    name::Symbol;
+    kwargs...,
+)
     trajectoryplot!(ax, traj, [name]; kwargs...)
 end
 
-function NamedTrajectories.trajectoryplot!(ax::Axis, traj::TrajType, input::Symbol, transform; kwargs...)
-    trajectoryplot!(ax, traj, [input]; transform=transform, kwargs...)
+function NamedTrajectories.trajectoryplot!(
+    ax::Axis,
+    traj::TrajType,
+    input::Symbol,
+    transform;
+    kwargs...,
+)
+    trajectoryplot!(ax, traj, [input]; transform = transform, kwargs...)
 end
 
-function NamedTrajectories.trajectoryplot!(ax::Axis, traj::TrajType, input::Symbol, output::AbstractString, transform; kwargs...)
-    trajectoryplot!(ax, traj, [input]; label=output, transform=transform, kwargs...)
+function NamedTrajectories.trajectoryplot!(
+    ax::Axis,
+    traj::TrajType,
+    input::Symbol,
+    output::AbstractString,
+    transform;
+    kwargs...,
+)
+    trajectoryplot!(ax, traj, [input]; label = output, transform = transform, kwargs...)
 end
 
-function NamedTrajectories.trajectoryplot!(ax::Axis, traj::TrajType, components::AbstractVector{Symbol}, transform; kwargs...)
-    trajectoryplot!(ax, traj, components; transform=transform, kwargs...)
+function NamedTrajectories.trajectoryplot!(
+    ax::Axis,
+    traj::TrajType,
+    components::AbstractVector{Symbol},
+    transform;
+    kwargs...,
+)
+    trajectoryplot!(ax, traj, components; transform = transform, kwargs...)
 end
 
-function NamedTrajectories.trajectoryplot!(ax::Axis, traj::TrajType, components::AbstractVector{Symbol}, output::AbstractString, transform; kwargs...)
-    trajectoryplot!(ax, traj, components; label=output, transform=transform, kwargs...)
+function NamedTrajectories.trajectoryplot!(
+    ax::Axis,
+    traj::TrajType,
+    components::AbstractVector{Symbol},
+    output::AbstractString,
+    transform;
+    kwargs...,
+)
+    trajectoryplot!(ax, traj, components; label = output, transform = transform, kwargs...)
 end
 
 # -------------------------------------------------------------- #
@@ -233,14 +303,17 @@ end
 
 function Makie.plot(
     traj::TrajType,
-    names::Union{Symbol, AbstractVector{Symbol}, Tuple{Vararg{Symbol}}}=filter(x -> x != to_value(traj).timestep, to_value(traj).names);
+    names::Union{Symbol,AbstractVector{Symbol},Tuple{Vararg{Symbol}}} = filter(
+        x -> x != to_value(traj).timestep,
+        to_value(traj).names,
+    );
 
     # ---------------------------------------------------------------------------
     # component specification keyword arguments
     # ---------------------------------------------------------------------------
 
     # whether or not to include unique labels for components
-    merge_labels::Union{Bool, AbstractVector{Bool}} = false,
+    merge_labels::Union{Bool,AbstractVector{Bool}} = false,
 
     # autolimits will use trajectory data and ignore trajectory bounds
     use_autolimits::Bool = false,
@@ -250,30 +323,39 @@ function Makie.plot(
     # ---------------------------------------------------------------------------
 
     # transformations, e.g., [(:x => x -> [x[1]; abs(x[2])]), ...]
-    transformations::AbstractVector{<:Pair{Symbol, <:AbstractTransform}} = Pair{Symbol, Function}[],
+    transformations::AbstractVector{<:Pair{Symbol,<:AbstractTransform}} = Pair{
+        Symbol,
+        Function,
+    }[],
 
     # labels for transformed components
-    transformation_labels::AbstractVector{<:AbstractString} = fill("", length(transformations)),
+    transformation_labels::AbstractVector{<:AbstractString} = fill(
+        "",
+        length(transformations),
+    ),
 
     # titles for transformations
-    transformation_titles::AbstractVector{<:AbstractString} = fill("", length(transformations)),
+    transformation_titles::AbstractVector{<:AbstractString} = fill(
+        "",
+        length(transformations),
+    ),
 
     # whether or not to include unique labels for transformed components
-    merge_transformation_labels::Union{Bool, AbstractVector{Bool}} = false,
+    merge_transformation_labels::Union{Bool,AbstractVector{Bool}} = false,
 
     # ---------------------------------------------------------------------------
     # figure and axis keyword arguments
     # ---------------------------------------------------------------------------
 
-    fig_size::Tuple{Int, Int} = (800, 600),
-    titlesize::Int=18,
-    subtitlesize::Int=16,
-    xlabelsize::Int=16,
+    fig_size::Tuple{Int,Int} = (800, 600),
+    titlesize::Int = 18,
+    subtitlesize::Int = 16,
+    xlabelsize::Int = 16,
 
     # ---------------------------------------------------------------------------
     # plot keyword arguments (for all names)
     # ---------------------------------------------------------------------------
-    kwargs...
+    kwargs...,
 )
     t = to_value(traj)
 
@@ -287,13 +369,16 @@ function Makie.plot(
     end
 
     if merge_transformation_labels isa Bool
-        merge_transformation_labels = fill(merge_transformation_labels, length(transformations))
+        merge_transformation_labels =
+            fill(merge_transformation_labels, length(transformations))
     end
 
-    @assert length(merge_transformation_labels) == length(transformation_labels) == length(transformations)
+    @assert length(merge_transformation_labels) ==
+            length(transformation_labels) ==
+            length(transformations)
 
     # create figure
-    fig = Figure(size=fig_size)
+    fig = Figure(size = fig_size)
 
     # Default components
     # ------------------
@@ -315,20 +400,35 @@ function Makie.plot(
             titlealign = :left,
             titlesize = titlesize,
             xticklabelsvisible = i == length(names),
-            xtickalign=1,
+            xtickalign = 1,
             xlabel = i == length(names) ? "time" : "",
             xlabelsize = xlabelsize,
-            limits = limits
+            limits = limits,
         )
         merge = merge_labels[i]
-        plt = trajectoryplot!(ax, traj, name; merge=merge, kwargs...)
+        plt = trajectoryplot!(ax, traj, name; merge = merge, kwargs...)
         # Legend construction
-        child_plots = filter(p -> haskey(p, :label) && !isnothing(to_value(p.label)), plt.plots)
+        child_plots =
+            filter(p -> haskey(p, :label) && !isnothing(to_value(p.label)), plt.plots)
         labels = [to_value(p.label) for p in child_plots]
-        Legend(fig[i, 2], child_plots, labels, tellheight=false)
+        # Deduplicate legend entries when labels are merged
+        if merge
+            seen = Set{String}()
+            keep = Int[]
+            for (j, lbl) in enumerate(labels)
+                s = string(lbl)
+                if s ∉ seen
+                    push!(seen, s)
+                    push!(keep, j)
+                end
+            end
+            child_plots = child_plots[keep]
+            labels = labels[keep]
+        end
+        Legend(fig[i, 2], child_plots, labels, tellheight = false)
     end
 
-    for i in 1:length(names) - 1
+    for i = 1:(length(names)-1)
         rowgap!(fig.layout, i, Relative(0.015))
     end
 
@@ -339,7 +439,7 @@ function Makie.plot(
 
     for (i, (input, transform)) in enumerate(transformations)
         ax = Axis(
-            fig[offset + i, 1],
+            fig[offset+i, 1],
             title = i == 1 || !isempty(transformation_titles[i]) ? "Transformations" : "",
             titlecolor = i == 1 ? theme(fig.scene, :textcolor) : (:black, 0.0),
             titlealign = :left,
@@ -355,17 +455,40 @@ function Makie.plot(
         output = transformation_labels[i]
         merge = merge_transformation_labels[i]
         if !isempty(output)
-            plt = trajectoryplot!(ax, traj, input, output, transform; merge=merge, kwargs...)
+            plt = trajectoryplot!(
+                ax,
+                traj,
+                input,
+                output,
+                transform;
+                merge = merge,
+                kwargs...,
+            )
         else
-            plt = trajectoryplot!(ax, traj, input, transform; merge=merge, kwargs...)
+            plt = trajectoryplot!(ax, traj, input, transform; merge = merge, kwargs...)
         end
         # Legend construction
-        child_plots = filter(p -> haskey(p, :label) && !isnothing(to_value(p.label)), plt.plots)
+        child_plots =
+            filter(p -> haskey(p, :label) && !isnothing(to_value(p.label)), plt.plots)
         labels = [to_value(p.label) for p in child_plots]
-        Legend(fig[offset + i, 2], child_plots, labels, tellheight=false)
+        # Deduplicate legend entries when labels are merged
+        if merge
+            seen = Set{String}()
+            keep = Int[]
+            for (j, lbl) in enumerate(labels)
+                s = string(lbl)
+                if s ∉ seen
+                    push!(seen, s)
+                    push!(keep, j)
+                end
+            end
+            child_plots = child_plots[keep]
+            labels = labels[keep]
+        end
+        Legend(fig[offset+i, 2], child_plots, labels, tellheight = false)
     end
 
-    for i in 1:length(transformations)-1
+    for i = 1:(length(transformations)-1)
         rowgap!(fig.layout, offset + i, 0.0)
     end
 
@@ -379,7 +502,7 @@ end
 
 @testitem "check point based" begin
     using CairoMakie
-    traj = rand(NamedTrajectory, 10, state_dim=3)
+    traj = rand(NamedTrajectory, 10, state_dim = 3)
 
     f, ax, plt = stairs(traj, 1)
     @test f isa Figure
@@ -387,22 +510,27 @@ end
 
 @testitem "check default plot is series" begin
     using CairoMakie
-    f = plot(Observable(rand(NamedTrajectory, 10, state_dim=3)), [:x])
+    f = plot(Observable(rand(NamedTrajectory, 10, state_dim = 3)), [:x])
     @test f isa Figure
 end
 
 @testitem "convert_arguments plot with transform" begin
     using CairoMakie
-    traj = rand(NamedTrajectory, 10, state_dim=3)
+    traj = rand(NamedTrajectory, 10, state_dim = 3)
 
     f = Figure()
-    trajectoryplot(f[1,1], traj, :x)
-    
+    trajectoryplot(f[1, 1], traj, :x)
+
     ax = Axis(f[2, 1])
-    labels = ["T(x) $i" for i in 1:size(traj.x, 1)]
+    labels = ["T(x) $i" for i = 1:size(traj.x, 1)]
     p = trajectoryplot!(
-        ax, traj, :x, x -> x .^ 2, 
-        label=labels, color=:seaborn_colorblind, marker=:circle,
+        ax,
+        traj,
+        :x,
+        x -> x .^ 2,
+        label = labels,
+        color = :seaborn_colorblind,
+        marker = :circle,
     )
     # Check labels on the individual lines
     # p.plots contains Lines objects.
@@ -420,27 +548,27 @@ end
 @testitem "basic Plot_Name recipe" begin
     using CairoMakie
 
-    traj = rand(NamedTrajectory, 10, state_dim=3)
+    traj = rand(NamedTrajectory, 10, state_dim = 3)
 
     f = Figure()
-    ax = Axis(f[1,1])
+    ax = Axis(f[1, 1])
     p = plot_name!(ax, traj, :x)
 
     @test p isa Plot
-    
+
     # Test Series attributes (now on the recipe object or distributed)
     # The recipe object p has the attributes passed to it.
     for attr in [:color, :linestyle, :linewidth, :marker, :markersize]
         @test haskey(p.attributes, attr)
     end
 
-    # Test labels 
-    # The recipe creates multiple lines. 
+    # Test labels
+    # The recipe creates multiple lines.
     # We check if the lines have the correct labels.
     line_plots = filter(x -> x isa Lines, p.plots)
     @test length(line_plots) == size(traj.x, 1)
-    
-    expected_labels = ["x$i" for i in 1:size(traj.x, 1)]
+
+    expected_labels = ["\$x_{$i}\$" for i = 1:size(traj.x, 1)]
     for (i, lp) in enumerate(line_plots)
         @test lp.label[] == expected_labels[i]
     end
@@ -450,38 +578,38 @@ end
 
 @testitem "Plot_Name with one dimension" begin
     using CairoMakie
-    f = plot_name(rand(NamedTrajectory, 10, state_dim=1), :x)
+    f = plot_name(rand(NamedTrajectory, 10, state_dim = 1), :x)
     @test f isa Figure
 end
 
 @testitem "transform with vector of functions" begin
     using CairoMakie
-    traj = rand(NamedTrajectory, 10, state_dim=1)
+    traj = rand(NamedTrajectory, 10, state_dim = 1)
     # Use trajectoryplot! to get the plot object for inspection
     f = Figure()
-    ax = Axis(f[1,1])
-    
-    p = trajectoryplot!(ax, traj, :x, [x -> [t - 1] for t in 1:10])
+    ax = Axis(f[1, 1])
+
+    p = trajectoryplot!(ax, traj, :x, [x -> [t - 1] for t = 1:10])
 
     # Extract data from the plot
     line_plot = p.plots[1]
-    
+
     # Makie converts (x, y) to Points internally for Lines
     points = to_value(line_plot[1])
     plotted_data = [p[2] for p in points]
-    
-    expected_y = [Float64(t) for t in 0:9]
-    
+
+    expected_y = [Float64(t) for t = 0:9]
+
     @test plotted_data ≈ expected_y
     @test f isa Figure
 end
 
 @testitem "Plot_Name with many colors" begin
     using CairoMakie
-    traj = rand(NamedTrajectory, 10, state_dim=100)
+    traj = rand(NamedTrajectory, 10, state_dim = 100)
 
     f = Figure()
-    ax = Axis(f[1,1])
+    ax = Axis(f[1, 1])
     p = plot_name!(ax, traj, :x)
     # extract data: 
     # Should have 100 Lines plots
@@ -492,59 +620,92 @@ end
 
 @testitem "Plot_Name with indices" begin
     using CairoMakie
-    traj = rand(NamedTrajectory, 10, state_dim=3)
+    traj = rand(NamedTrajectory, 10, state_dim = 3)
 
     f = Figure()
-    ax = Axis(f[1,1])
+    ax = Axis(f[1, 1])
     indices = [1, 3, 5]
     # indices is passed as kwarg
-    p = plot_name!(ax, traj, :x, indices=indices)
+    p = plot_name!(ax, traj, :x, indices = indices)
 
     # extract data:
     # There should be 3 lines (state_dim=3)
     line_plots = filter(x -> x isa Lines, p.plots)
-    
+
     # Check the first dimension
     points = to_value(line_plots[1][1])
     plotted_times = [p[1] for p in points]
     plotted_data = [p[2] for p in points]
-    
+
     times = get_times(traj)
     expected_times = times[indices]
     expected_data = traj.x[1, indices]
-    
+
     @test plotted_times ≈ expected_times
     @test plotted_data ≈ expected_data
 end
 
 @testitem "trajectoryplot alias" begin
     using CairoMakie
-    traj = rand(NamedTrajectory, 10, state_dim=3)
+    traj = rand(NamedTrajectory, 10, state_dim = 3)
     f = trajectoryplot(traj, :x)
     @test f isa Figure
 end
 
 @testitem "Plot_Name transform and merge" begin
     using CairoMakie
-    traj = rand(NamedTrajectory, 10, state_dim=3)
+    traj = rand(NamedTrajectory, 10, state_dim = 3)
 
     f = Figure()
-    ax = Axis(f[1,1])
-    p = plot_name!(ax, traj, :x, "y", x -> x .^ 2, linewidth=3, marker=:circle, merge=true)
-    
-    # With merge=true, labels should be just "y"
+    ax = Axis(f[1, 1])
+    p = plot_name!(
+        ax,
+        traj,
+        :x,
+        "y",
+        x -> x .^ 2,
+        linewidth = 3,
+        marker = :circle,
+        merge = true,
+    )
+
+    # With merge=true, labels should be just L"$y$"
     line_plots = filter(x -> x isa Lines, p.plots)
     for lp in line_plots
-        @test lp.label[] == "y"
+        @test lp.label[] == "\$y\$"
     end
 
-    ax = Axis(f[2,1])
-    p = plot_name!(ax, traj, :x, "y", x -> x .^ 2, linewidth=3, marker=:circle)
-    
-    # With merge=false (default), labels should be "y1", "y2", etc.
+    ax = Axis(f[2, 1])
+    p = plot_name!(ax, traj, :x, "y", x -> x .^ 2, linewidth = 3, marker = :circle)
+
+    # With merge=false (default), labels should be L"$y_{1}$", L"$y_{2}$", etc.
     line_plots = filter(x -> x isa Lines, p.plots)
     for (i, lp) in enumerate(line_plots)
-        @test lp.label[] == "y$i"
+        @test lp.label[] == "\$y_{$i}\$"
+    end
+end
+
+@testitem "LaTeXString label passthrough without double-wrapping" begin
+    using CairoMakie
+    using LaTeXStrings
+    traj = rand(NamedTrajectory, 10, state_dim = 3)
+
+    f = Figure()
+
+    # Merged: LaTeXString label should be returned as-is
+    ax = Axis(f[1, 1])
+    p = plot_name!(ax, traj, :x, L"$\alpha$", x -> x .^ 2, merge = true)
+    line_plots = filter(x -> x isa Lines, p.plots)
+    for lp in line_plots
+        @test lp.label[] == L"$\alpha$"
+    end
+
+    # Not merged: should append subscript without double-wrapping $
+    ax = Axis(f[2, 1])
+    p = plot_name!(ax, traj, :x, L"$\alpha$", x -> x .^ 2)
+    line_plots = filter(x -> x isa Lines, p.plots)
+    for (i, lp) in enumerate(line_plots)
+        @test lp.label[] == latexstring("\\alpha_{$i}")
     end
 end
 
@@ -552,13 +713,13 @@ end
     using CairoMakie
     state_dim = 3
     control_dim = 2
-    traj = rand(NamedTrajectory, 10, state_dim=state_dim, control_dim=control_dim)
+    traj = rand(NamedTrajectory, 10, state_dim = state_dim, control_dim = control_dim)
 
     # false, false (default)
     f = plot(traj)
     # Check axis 1 (states)
     ax1 = f.content[1] # Axis
-    
+
     # Helper to find Lines plots recursively
     function find_lines(scene)
         lines = []
@@ -571,11 +732,11 @@ end
         end
         return lines
     end
-    
+
     # Use Makie's collect_atomic_plots if available or manual traversal
     # ax1.scene.plots contains the recipe plot.
     # The recipe plot contains Lines.
-    
+
     # Manual traversal for safety
     all_plots = []
     for p in ax1.scene.plots
@@ -584,13 +745,13 @@ end
     lines1 = filter(p -> p isa Lines, all_plots)
 
     @test length(lines1) == state_dim
-    # Check labels
-    @test all(l -> l.label[] != "x", lines1) # Should be x1, x2, x3
+    # Check labels - should be L"$x_{1}$", L"$x_{2}$", L"$x_{3}$"
+    @test all(l -> l.label[] != "\$x\$", lines1)
 
     # true, true
-    f = plot(traj, merge_labels=true)
+    f = plot(traj, merge_labels = true)
     ax1 = f.content[1]
-    
+
     all_plots = []
     for p in ax1.scene.plots
         append!(all_plots, p.plots)
@@ -598,33 +759,130 @@ end
     lines1 = filter(p -> p isa Lines, all_plots)
 
     @test length(lines1) == state_dim
-    # Check labels - all should be "x" (or component name)
-    @test all(l -> l.label[] == "x", lines1)
+    # Check labels - all should be L"$x$" (merged)
+    @test all(l -> l.label[] == "\$x\$", lines1)
+end
+
+@testitem "merge_labels legend deduplication" begin
+    using CairoMakie
+    state_dim = 3
+    control_dim = 2
+    traj = rand(NamedTrajectory, 10, state_dim = state_dim, control_dim = control_dim)
+
+    # merge_labels=true should produce one legend entry per component
+    f = plot(traj, merge_labels = true)
+    # Row 1: x with 3 dims → legend should have 1 entry
+    legend1 = contents(f[1, 2])[1]
+    _, entries1 = legend1.entrygroups[][1]
+    @test length(entries1) == 1
+
+    # Row 2: u with 2 dims → legend should have 1 entry
+    legend2 = contents(f[2, 2])[1]
+    _, entries2 = legend2.entrygroups[][1]
+    @test length(entries2) == 1
+
+    # Without merge: legend entries should match dimensionality
+    f2 = plot(traj)
+    legend1_nomerge = contents(f2[1, 2])[1]
+    _, entries1_nomerge = legend1_nomerge.entrygroups[][1]
+    @test length(entries1_nomerge) == state_dim
+
+    legend2_nomerge = contents(f2[2, 2])[1]
+    _, entries2_nomerge = legend2_nomerge.entrygroups[][1]
+    @test length(entries2_nomerge) == control_dim
+end
+
+@testitem "merge_labels mixed per-component" begin
+    using CairoMakie
+    state_dim = 3
+    control_dim = 2
+    traj = rand(NamedTrajectory, 10, state_dim = state_dim, control_dim = control_dim)
+
+    # merge_labels=[false, true]: x unmerged, u merged
+    f = plot(traj, [:x, :u], merge_labels = [false, true])
+
+    # Row 1: x with merge=false → state_dim legend entries
+    legend1 = contents(f[1, 2])[1]
+    _, entries1 = legend1.entrygroups[][1]
+    @test length(entries1) == state_dim
+
+    # Row 2: u with merge=true → 1 legend entry
+    legend2 = contents(f[2, 2])[1]
+    _, entries2 = legend2.entrygroups[][1]
+    @test length(entries2) == 1
+end
+
+@testitem "merge_labels with transformations" begin
+    using CairoMakie
+    state_dim = 3
+    control_dim = 2
+    traj = rand(NamedTrajectory, 10, state_dim = state_dim, control_dim = control_dim)
+
+    # Test merge_transformation_labels deduplicates transformation legends
+    transformations = [(:x => x -> abs.(x)), (:u => u -> u .^ 2)]
+    f = plot(
+        traj,
+        Symbol[];
+        transformations = transformations,
+        merge_transformation_labels = true,
+    )
+    # Row 1: transform of x (3 dims) with merge → 1 legend entry
+    legend1 = contents(f[1, 2])[1]
+    _, entries1 = legend1.entrygroups[][1]
+    @test length(entries1) == 1
+
+    # Row 2: transform of u (2 dims) with merge → 1 legend entry
+    legend2 = contents(f[2, 2])[1]
+    _, entries2 = legend2.entrygroups[][1]
+    @test length(entries2) == 1
+
+    # Mixed: merge_labels=[false, true] on components + merge_transformation_labels=[true, false] on transforms
+    f2 = plot(
+        traj,
+        [:x, :u];
+        merge_labels = [false, true],
+        transformations = transformations,
+        merge_transformation_labels = [true, false],
+    )
+
+    # Row 1 (x, unmerged): state_dim entries
+    _, entries_x = contents(f2[1, 2])[1].entrygroups[][1]
+    @test length(entries_x) == state_dim
+
+    # Row 2 (u, merged): 1 entry
+    _, entries_u = contents(f2[2, 2])[1].entrygroups[][1]
+    @test length(entries_u) == 1
+
+    # Row 3 (transform x, merged): 1 entry
+    _, entries_tx = contents(f2[3, 2])[1].entrygroups[][1]
+    @test length(entries_tx) == 1
+
+    # Row 4 (transform u, unmerged): control_dim entries
+    _, entries_tu = contents(f2[4, 2])[1].entrygroups[][1]
+    @test length(entries_tu) == control_dim
 end
 
 @testitem "traj plot with transformations" begin
     using CairoMakie
-    traj = rand(NamedTrajectory, 10, state_dim=3)
+    traj = rand(NamedTrajectory, 10, state_dim = 3)
 
     # multiple transformations
-    transformations = [(:x => x -> [x[1] * 30]), (:u => u -> u .^2)]
+    transformations = [(:x => x -> [x[1] * 30]), (:u => u -> u .^ 2)]
 
     f = plot(
-        traj, [:u],
-        transformations=transformations,
-        transformation_labels=["Label(x)", "Label(u)"], 
-        merge_transformation_labels=[false, true]
+        traj,
+        [:u],
+        transformations = transformations,
+        transformation_labels = ["Label(x)", "Label(u)"],
+        merge_transformation_labels = [false, true],
     )
     # check for axes
     axes = filter(c -> c isa Axis, f.content)
     @test length(axes) == 3
 
     # test repeat label
-    push!(transformations, (:x => x -> [x[2] ^6]))
-    f = plot(
-        traj, 
-        transformations=transformations,
-    )
+    push!(transformations, (:x => x -> [x[2] ^ 6]))
+    f = plot(traj, transformations = transformations)
     axes = filter(c -> c isa Axis, f.content)
     @test length(axes) == 5
     @test f isa Figure
@@ -632,16 +890,17 @@ end
 
 @testitem "transformation titles" begin
     using CairoMakie
-    traj = rand(NamedTrajectory, 10, state_dim=3)
+    traj = rand(NamedTrajectory, 10, state_dim = 3)
 
     # multiple transformations
-    transformations = [(:x => x -> [x[1] * 30]), (:u => u -> u .^2)]
-    transformation_titles= ["Title 1", "Title 2"]
+    transformations = [(:x => x -> [x[1] * 30]), (:u => u -> u .^ 2)]
+    transformation_titles = ["Title 1", "Title 2"]
 
     f = plot(
-        traj, Symbol[],
-        transformations=transformations,
-        transformation_titles=transformation_titles
+        traj,
+        Symbol[],
+        transformations = transformations,
+        transformation_titles = transformation_titles,
     )
     axes = filter(c -> c isa Axis, f.content)
     @test axes[1].subtitle[] == transformation_titles[1]
@@ -653,12 +912,12 @@ end
     using CairoMakie
     # test passing in series kwargs
     f = plot(
-        rand(NamedTrajectory, 10, state_dim=3), 
+        rand(NamedTrajectory, 10, state_dim = 3),
         [:x, :u],
-        linewidth=5,
-        color=:glasbey_bw_minc_20_n256,
+        linewidth = 5,
+        color = :glasbey_bw_minc_20_n256,
         marker = :x,
-        markersize = 10
+        markersize = 10,
     )
     # check attributes of first axis
     attributes = f.content[1].scene.plots[1].attributes
@@ -672,7 +931,7 @@ end
 @testitem "create figure with a theme" begin
     using CairoMakie
     f = with_theme(theme_dark()) do
-        plot(rand(NamedTrajectory, 10, state_dim=3))
+        plot(rand(NamedTrajectory, 10, state_dim = 3))
     end
     @test f isa Figure
 end
@@ -680,61 +939,84 @@ end
 @testitem "default plots" begin
     using CairoMakie
     # test passing in series kwargs
-    f = plot(rand(NamedTrajectory, 10, state_dim=3), free_time=true)
+    f = plot(rand(NamedTrajectory, 10, state_dim = 3), free_time = true)
     @test f isa Figure
-    f = plot(rand(NamedTrajectory, 10, state_dim=3), free_time=false)
+    f = plot(rand(NamedTrajectory, 10, state_dim = 3), free_time = false)
     @test f isa Figure
 end
 
 @testitem "multiple components in trajectoryplot!" begin
     using CairoMakie
-    traj = rand(NamedTrajectory, 10, state_dim=3, control_dim=2)
+    traj = rand(NamedTrajectory, 10, state_dim = 3, control_dim = 2)
     f = Figure()
     ax = Axis(f[1, 1])
     p = trajectoryplot!(ax, traj, [:x, :u])
-    
+
     # Check for Lines from both components
     # :x has 3 dims, :u has 2 dims -> total 5 line plots
     line_plots = filter(x -> x isa Lines, p.plots)
     @test length(line_plots) == 5
-    
-    # Verify labels contain both x and u
-    labels = [lp.label[] for lp in line_plots]
+
+    # Verify labels contain both x and u (LaTeXStrings contain the symbol names)
+    labels = [string(lp.label[]) for lp in line_plots]
     @test any(contains("x"), labels)
     @test any(contains("u"), labels)
 end
 
 @testitem "markersize and scatter plots" begin
     using CairoMakie
-    traj = rand(NamedTrajectory, 10, state_dim=2)
+    traj = rand(NamedTrajectory, 10, state_dim = 2)
     f = Figure()
     ax = Axis(f[1, 1])
-    p = trajectoryplot!(ax, traj, :x, markersize=5, marker=:circle)
-    
+    p = trajectoryplot!(ax, traj, :x, markersize = 5, marker = :circle)
+
     # Should have 2 Lines and 2 Scatters
     line_plots = filter(x -> x isa Lines, p.plots)
     scatter_plots = filter(x -> x isa Scatter, p.plots)
-    
+
     @test length(line_plots) == 2
     @test length(scatter_plots) == 2
-    
+
     # Check markersize attribute
     @test all(scatter_plots[1].markersize[] .≈ 5)
 end
 
 @testitem "custom colormap and unique colors" begin
     using CairoMakie
-    traj = rand(NamedTrajectory, 10, state_dim=3)
+    traj = rand(NamedTrajectory, 10, state_dim = 3)
     f = Figure()
     ax = Axis(f[1, 1])
     cmap = :viridis
-    p = trajectoryplot!(ax, traj, :x, color=cmap)
-    
+    p = trajectoryplot!(ax, traj, :x, color = cmap)
+
     line_plots = filter(x -> x isa Lines, p.plots)
     colors = [lp.color[] for lp in line_plots]
-    
+
     # Colors should be unique if sampled from colormap
     @test length(unique(colors)) == 3
+end
+
+@testitem "labels on transformed traj on one vector use correct dim of vector for color/label sampling" begin
+    using CairoMakie
+
+    traj = rand(NamedTrajectory, 10, state_dim = 3, control_dim = 2)
+    plt = plot(traj, transformations = [(:x => x -> [x[1]])])
+    @test plt isa Figure
+    # transformed plot and legend are: 3rd plot (row) and legend is in 2nd column.
+    # entrygroups[] is a vector (usuall of length 1) of tuples (legend title, legend entries)
+    _, transformed_legend_entries = contents(plt[3, 2])[1].entrygroups[][1]
+    @test length(transformed_legend_entries) == 1
+
+    plt = plot(traj, transformations = [(:x => x -> x[1:1])])
+    @test plt isa Figure
+    _, transformed_legend_entries = contents(plt[3, 2])[1].entrygroups[][1]
+    @test length(transformed_legend_entries) == 1
+
+    # special scalar case
+    plt = plot(traj, transformations = [(:x => x -> x[1])])
+    @test plt isa Figure
+    _, transformed_legend_entries = contents(plt[3, 2])[1].entrygroups[][1]
+    @test length(transformed_legend_entries) == 1
 end
 
 end
