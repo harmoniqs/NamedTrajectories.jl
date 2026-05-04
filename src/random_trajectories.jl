@@ -20,27 +20,27 @@ Create a random `NamedTrajectory` with `N` knot points, a state variable `x` of 
 function Base.rand(
     ::Type{NamedTrajectory},
     N::Int;
-    timestep_value::Float64=1.0,
-    timestep::Symbol=:Δt,
-    state::Symbol=:x,
-    control::Symbol=:u,
-    state_dim::Int=3,
-    control_dim::Int=2
+    timestep_value::Float64 = 1.0,
+    timestep::Symbol = :Δt,
+    state::Symbol = :x,
+    control::Symbol = :u,
+    state_dim::Int = 3,
+    control_dim::Int = 2,
 )
     comps_data = (;
         state => randn(state_dim, N),
         control => randn(control_dim, N),
-        timestep => fill(timestep_value, 1, N)
+        timestep => fill(timestep_value, 1, N),
     )
 
-    return NamedTrajectory(comps_data;  timestep=timestep, controls=(control, timestep))
+    return NamedTrajectory(comps_data; timestep = timestep, controls = (control, timestep))
 end
 
 # =========================================================================== #
 
 @testitem "random trajectories" begin
     @test rand(NamedTrajectory, 5) isa NamedTrajectory
-    @test rand(NamedTrajectory, 5; timestep=:dt).timestep == :dt
+    @test rand(NamedTrajectory, 5; timestep = :dt).timestep == :dt
 end
 
 end

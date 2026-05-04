@@ -52,7 +52,8 @@ Update a component of the knot point.
 """
 function update!(slice::KnotPoint, symb::Symbol, data::AbstractVector{Float64})
     @assert symb in slice.names
-    @assert size(data, 1) == (slice.components[symb].stop - slice.components[symb].start + 1)
+    @assert size(data, 1) ==
+            (slice.components[symb].stop - slice.components[symb].start + 1)
 
     Base.getproperty(slice, symb)[:] = data
     return nothing
@@ -72,16 +73,28 @@ end
     idx = rand(1:traj.N)
 
     traj[idx].x = deepcopy(x_new[:, idx])
-    @test traj.x[:, idx] == traj.data[traj.components.x, idx] == traj[idx].x == x_new[:, idx]
+    @test traj.x[:, idx] ==
+          traj.data[traj.components.x, idx] ==
+          traj[idx].x ==
+          x_new[:, idx]
 
     traj[idx].u = deepcopy(u_new[:, idx])
-    @test traj.u[:, idx] == traj.data[traj.components.u, idx] == traj[idx].u == u_new[:, idx]
+    @test traj.u[:, idx] ==
+          traj.data[traj.components.u, idx] ==
+          traj[idx].u ==
+          u_new[:, idx]
 
     traj.data[traj.components.x, idx] = deepcopy(x_orig[:, idx])
-    @test traj.x[:, idx] == traj.data[traj.components.x, idx] == traj[idx].x == x_orig[:, idx]
+    @test traj.x[:, idx] ==
+          traj.data[traj.components.x, idx] ==
+          traj[idx].x ==
+          x_orig[:, idx]
 
     traj.data[traj.components.u, idx] = deepcopy(u_orig[:, idx])
-    @test traj.u[:, idx] == traj.data[traj.components.u, idx] == traj[idx].u == u_orig[:, idx]
+    @test traj.u[:, idx] ==
+          traj.data[traj.components.u, idx] ==
+          traj[idx].u ==
+          u_orig[:, idx]
 end
 
 end

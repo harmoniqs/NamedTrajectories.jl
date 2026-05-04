@@ -65,7 +65,7 @@ extracted_traj = get_suffix(merged_traj, "_modified")
 extracted_traj.names
 
 # If you want the original names, you can remove the suffix
-original_traj = get_suffix(merged_traj, "_modified", remove=true)
+original_traj = get_suffix(merged_traj, "_modified", remove = true)
 original_traj.names
 
 # ### Merging with conflicts
@@ -75,7 +75,7 @@ conflicting_traj = rand(NamedTrajectory, 5)
 traj.names, conflicting_traj.names
 
 # In this case, keep the `u` data from the first trajectory and the `x` data and timestep from the second trajectory
-merged_traj = merge(traj, conflicting_traj; merge_names=(u=1, x=2, Δt=2))
+merged_traj = merge(traj, conflicting_traj; merge_names = (u = 1, x = 2, Δt = 2))
 println(merged_traj.u == traj.u, ", ", merged_traj.u == conflicting_traj.u)
 println(merged_traj.x == traj.x, ", ", merged_traj.x == conflicting_traj.x)
 
@@ -114,15 +114,19 @@ println(traj.components)
 
 idx = 1 # x
 k = 3
-slice = traj.datavec[((k - 1) * traj.N) .+ traj.components[traj.names[idx]]]
+slice = traj.datavec[((k-1)*traj.N) .+ traj.components[traj.names[idx]]]
 println(slice == traj[k].x == traj.x[:, k])
 
 # More generally, the indices of a given component across all knot points are given as follows:
 
 idx = 1 # x
-println([((k - 1) * traj.dim) .+ getproperty(traj.components, traj.names[idx]) for k in 1:traj.N])
+println([
+    ((k - 1) * traj.dim) .+ getproperty(traj.components, traj.names[idx]) for k = 1:traj.N
+])
 idx = 2 # u
-println([((k - 1) * traj.dim) .+ getproperty(traj.components, traj.names[idx]) for k in 1:traj.N])
+println([
+    ((k - 1) * traj.dim) .+ getproperty(traj.components, traj.names[idx]) for k = 1:traj.N
+])
 
 
 # ### Writability
@@ -136,7 +140,7 @@ println([((k - 1) * traj.dim) .+ getproperty(traj.components, traj.names[idx]) f
 traj = rand(NamedTrajectory, 5)
 traj.datavec
 println(traj.datavec)
-traj.datavec[1] *= 0.
+traj.datavec[1] *= 0.0
 println(traj.datavec)
 traj.datavec[:] = rand(length(traj.datavec))
 println(traj.datavec)
@@ -172,7 +176,7 @@ traj.x
 
 # or may be modified directly:
 
-traj.x[1] *= 0.
+traj.x[1] *= 0.0
 traj.x
 
 # Knot points are likewise accessible via `getindex`:

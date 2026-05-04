@@ -46,7 +46,7 @@ using ..Utils
 
 Returns a NamedTuple containing the names and corresponding data matrices of the trajectory.
 """
-function get_components(cnames::Union{Tuple, AbstractVector}, traj::NamedTrajectory)
+function get_components(cnames::Union{Tuple,AbstractVector}, traj::NamedTrajectory)
     symbs = Tuple(c for c in cnames)
     vals = [traj[c] for c ∈ cnames]
     return NamedTuple{symbs}(vals)
@@ -68,7 +68,10 @@ The filter requires that the components are a complete subset of the given indic
 a partial match is excluded from the returned names.
 """
 function get_component_names(traj::NamedTrajectory, comps::AbstractVector{Int})
-    names = [n for n ∈ keys(filter_by_value(x -> issubset(x, comps), traj.components)) if n ∈ traj.names]
+    names = [
+        n for n ∈ keys(filter_by_value(x -> issubset(x, comps), traj.components)) if
+        n ∈ traj.names
+    ]
     if isempty(names)
         error("Component names not found in traj")
     else
@@ -97,9 +100,9 @@ Returns the times of a trajectory as a vector.
 """
 function get_times(traj::NamedTrajectory)
     if traj.timestep isa Symbol
-        return cumsum([0.0, vec(traj[traj.timestep])[1:end-1]...])
+        return cumsum([0.0, vec(traj[traj.timestep])[1:(end-1)]...])
     else
-        return [0:traj.N-1...] * traj.timestep
+        return [0:(traj.N-1)...] * traj.timestep
     end
 end
 
@@ -130,19 +133,25 @@ end
 # -------------------------------------------------------------- #
 
 function extend_datavec(
-    data::AbstractMatrix{R}, 
-    ext_data::AbstractMatrix{R}
-) where R <: Real
+    data::AbstractMatrix{R},
+    ext_data::AbstractMatrix{R},
+) where {R<:Real}
     @assert size(data, 2) == size(ext_data, 2)
     N = size(data, 2)
     dim = size(data, 1)
     ext_dim = size(ext_data, 1)
     new_datavec = zeros((dim + ext_dim) * N)
-    for k in 1:N
+    for k = 1:N
         # fill original data
         copyto!(new_datavec, (k - 1) * (dim + ext_dim) + 1, data[:, k], 1, dim)
         # fill new data
-        copyto!(new_datavec, (k - 1) * (dim + ext_dim) + dim + 1, ext_data[:, k], 1, ext_dim)
+        copyto!(
+            new_datavec,
+            (k - 1) * (dim + ext_dim) + dim + 1,
+            ext_data[:, k],
+            1,
+            ext_dim,
+        )
     end
     return new_datavec
 end
@@ -157,9 +166,9 @@ Keyword arguments:
 """
 function add_components(
     traj::NamedTrajectory,
-    comps_data::NamedTuple{<:Any, <:Tuple};
-    type::Symbol=:state,
-    kwargs...
+    comps_data::NamedTuple{<:Any,<:Tuple};
+    type::Symbol = :state,
+    kwargs...,
 )
     # TODO: multiple types in comps; shift of previous control to state
     if type == :global
@@ -179,11 +188,11 @@ function add_components(
         gcomps = merge(traj.global_components, gcomps_pairs)
 
         return NamedTrajectory(
-            traj; 
-            datavec=traj.datavec,
-            global_data=global_data, 
-            global_components=gcomps,
-            kwargs...
+            traj;
+            datavec = traj.datavec,
+            global_data = global_data,
+            global_components = gcomps,
+            kwargs...,
         )
     elseif type ∈ [:state, :control, :slack]
         @assert all([data isa AbstractMatrix for data in values(comps_data)])
@@ -212,13 +221,17 @@ function add_components(
 
         return NamedTrajectory(
             traj;
-            datavec=datavec,
-            components=comps,
-            controls=controls,
-            kwargs...
+            datavec = datavec,
+            components = comps,
+            controls = controls,
+            kwargs...,
         )
     else
-        throw(ArgumentError("Invalid type: $type. Must be one of :state, :control, :slack, or :global."))
+        throw(
+            ArgumentError(
+                "Invalid type: $type. Must be one of :state, :control, :slack, or :global.",
+            ),
+        )
     end
 end
 
@@ -234,16 +247,16 @@ function add_component(
     traj::NamedTrajectory,
     name::Symbol,
     data::AbstractVecOrMat{Float64};
-    type::Symbol=:state,
-    kwargs...
+    type::Symbol = :state,
+    kwargs...,
 )
     if type != :global && data isa AbstractVector
         @assert length(data) == traj.N "Data length must match trajectory N"
-        comp_data = (; name => reshape(data, 1, traj.N),) 
+        comp_data = (; name => reshape(data, 1, traj.N),)
     else
         comp_data = (; name => data,)
     end
-    return add_components(traj, comp_data; type=type, kwargs...)
+    return add_components(traj, comp_data; type = type, kwargs...)
 end
 
 """
@@ -263,8 +276,8 @@ Remove a set of components from the trajectory.
 function remove_components(
     traj::NamedTrajectory,
     names::AbstractVector{<:Symbol};
-    new_timestep::Union{Nothing, Symbol}=nothing,
-    new_controls::Union{Nothing, Symbol, Tuple{Vararg{Symbol}}}=nothing
+    new_timestep::Union{Nothing,Symbol} = nothing,
+    new_controls::Union{Nothing,Symbol,Tuple{Vararg{Symbol}}} = nothing,
 )
     comps_data = NamedTuple(get_components(setdiff(traj.names, names), traj))
     gcomps_data = NamedTuple(get_components(setdiff(traj.global_names, names), traj))
@@ -291,12 +304,12 @@ function remove_components(
     return NamedTrajectory(
         comps_data,
         gcomps_data;
-        timestep=timestep,
-        controls=Tuple(controls),
-        bounds=NamedTuple(k => v for (k, v) in pairs(traj.bounds) if k ∉ names),
-        initial=NamedTuple(k => v for (k, v) in pairs(traj.initial) if k ∉ names),
-        final=NamedTuple(k => v for (k, v) in pairs(traj.final) if k ∉ names),
-        goal=NamedTuple(k => v for (k, v) in pairs(traj.goal) if k ∉ names),
+        timestep = timestep,
+        controls = Tuple(controls),
+        bounds = NamedTuple(k => v for (k, v) in pairs(traj.bounds) if k ∉ names),
+        initial = NamedTuple(k => v for (k, v) in pairs(traj.initial) if k ∉ names),
+        final = NamedTuple(k => v for (k, v) in pairs(traj.final) if k ∉ names),
+        goal = NamedTuple(k => v for (k, v) in pairs(traj.goal) if k ∉ names),
     )
 end
 
@@ -325,14 +338,14 @@ Update the trajectory with a new datavec.
 Keyword arguments:
     - `type::Symbol`: The type of the datavec, can be `:data`, `:global`, or `:both`. Default is `global`.
 """
-function update!(traj::NamedTrajectory, datavec::AbstractVector{Float64}; type=:data)
+function update!(traj::NamedTrajectory, datavec::AbstractVector{Float64}; type = :data)
     if type == :data
         traj.datavec[:] = datavec
     elseif type == :global
         traj.global_data[:] = datavec
     elseif type == :both
-        traj.datavec[:] = datavec[1:(traj.dim * traj.N)]
-        traj.global_data[:] = datavec[(traj.dim * traj.N + 1):(traj.dim * traj.N + traj.global_dim)]
+        traj.datavec[:] = datavec[1:(traj.dim*traj.N)]
+        traj.global_data[:] = datavec[(traj.dim*traj.N+1):(traj.dim*traj.N+traj.global_dim)]
     end
     return nothing
 end
@@ -342,14 +355,11 @@ end
 
 Update the bound of a component of the trajectory.
 """
-function update_bound!(
-    traj::NamedTrajectory,
-    name::Symbol,
-    new_bound
-)
+function update_bound!(traj::NamedTrajectory, name::Symbol, new_bound)
     @assert name in keys(traj.bounds) "update_bound! requires existing bound"
     # reuse processing
-    new_bounds = StructNamedTrajectory.get_bounds_from_dims((; name => new_bound,), traj.dims)
+    new_bounds =
+        StructNamedTrajectory.get_bounds_from_dims((; name => new_bound,), traj.dims)
     traj.bounds = merge(traj.bounds, new_bounds)
     return nothing
 end
@@ -377,9 +387,9 @@ end
 
 function Base.merge(
     trajs::AbstractVector{<:NamedTrajectory};
-    merge_names::NamedTuple{<:Any, <:Tuple{Vararg{Int}}}=NamedTuple(),
-    exclude_names::AbstractVector{<:Symbol}=Symbol[],
-    timestep::Symbol=trajs[end].timestep
+    merge_names::NamedTuple{<:Any,<:Tuple{Vararg{Int}}} = NamedTuple(),
+    exclude_names::AbstractVector{<:Symbol} = Symbol[],
+    timestep::Symbol = trajs[end].timestep,
 )
     if length(trajs) < 2
         throw(ArgumentError("At least two trajectories must be provided"))
@@ -387,11 +397,12 @@ function Base.merge(
 
     # organize names to drop by trajectory index
     drop_names = map(eachindex(trajs)) do index
-        if index < 1 || index > length(trajs) 
+        if index < 1 || index > length(trajs)
             throw(BoundsError(trajs, index))
         end
         vcat(
-            Symbol[name for (name, keep) ∈ pairs(merge_names) if keep != index], exclude_names
+            Symbol[name for (name, keep) ∈ pairs(merge_names) if keep != index],
+            exclude_names,
         )
     end
 
@@ -404,32 +415,42 @@ function Base.merge(
     end
 
     # merge states and controls (separately to keep data organized)
-    state_components = merge_outer([get_components(s, t) for (s, t) ∈ zip(state_names, trajs)])
-    control_components = merge_outer([get_components(c, t) for (c, t) ∈ zip(control_names, trajs)])
+    state_components =
+        merge_outer([get_components(s, t) for (s, t) ∈ zip(state_names, trajs)])
+    control_components =
+        merge_outer([get_components(c, t) for (c, t) ∈ zip(control_names, trajs)])
     components = merge_outer(state_components, control_components)
- 
+
     # ensure timestep is in components
     if timestep ∉ keys(components)
         throw(ArgumentError("Timestep '$timestep' not found in components."))
     end
 
     # merge global data
-    global_names = [[s for s ∈ traj.global_names if s ∉ names] for (traj, names) in zip(trajs, drop_names)]
-    global_components = merge_outer([get_components(g, t) for (g, t) ∈ zip(global_names, trajs)])
+    global_names = [
+        [s for s ∈ traj.global_names if s ∉ names] for
+        (traj, names) in zip(trajs, drop_names)
+    ]
+    global_components =
+        merge_outer([get_components(g, t) for (g, t) ∈ zip(global_names, trajs)])
 
     return NamedTrajectory(
         components,
         global_components,
-        timestep=timestep,
-        controls=merge_outer([Tuple(c) for c in control_names]),
-        bounds=merge_outer(
-            [drop(traj.bounds, names) for (traj, names) in zip(trajs, drop_names)]),
-        initial=merge_outer(
-            [drop(traj.initial, names) for (traj, names) in zip(trajs, drop_names)]),
-        final=merge_outer(
-            [drop(traj.final, names) for (traj, names) in zip(trajs, drop_names)]),
-        goal=merge_outer(
-            [drop(traj.goal, names) for (traj, names) in zip(trajs, drop_names)]),
+        timestep = timestep,
+        controls = merge_outer([Tuple(c) for c in control_names]),
+        bounds = merge_outer([
+            drop(traj.bounds, names) for (traj, names) in zip(trajs, drop_names)
+        ]),
+        initial = merge_outer([
+            drop(traj.initial, names) for (traj, names) in zip(trajs, drop_names)
+        ]),
+        final = merge_outer([
+            drop(traj.final, names) for (traj, names) in zip(trajs, drop_names)
+        ]),
+        goal = merge_outer([
+            drop(traj.goal, names) for (traj, names) in zip(trajs, drop_names)
+        ]),
     )
 end
 
@@ -495,34 +516,34 @@ function add_suffix end
 add_suffix(symb::Symbol, suffix::String) = Symbol(string(symb, suffix))
 
 function add_suffix(
-    symbs::Tuple, 
-    suffix::String; 
-    exclude::AbstractVector{<:Symbol}=Symbol[]
+    symbs::Tuple,
+    suffix::String;
+    exclude::AbstractVector{<:Symbol} = Symbol[],
 )
     return Tuple(s ∈ exclude ? s : add_suffix(s, suffix) for s ∈ symbs)
 end
 
 function add_suffix(
-    symbs::AbstractVector, 
-    suffix::String; 
-    exclude::AbstractVector{<:Symbol}=Symbol[]
+    symbs::AbstractVector,
+    suffix::String;
+    exclude::AbstractVector{<:Symbol} = Symbol[],
 )
     return [s ∈ exclude ? s : add_suffix(s, suffix) for s ∈ symbs]
 end
 
 function add_suffix(
-    nt::NamedTuple, 
-    suffix::String; 
-    exclude::AbstractVector{<:Symbol}=Symbol[]
+    nt::NamedTuple,
+    suffix::String;
+    exclude::AbstractVector{<:Symbol} = Symbol[],
 )
     symbs = Tuple(k ∈ exclude ? k : add_suffix(k, suffix) for k ∈ keys(nt))
     return NamedTuple{symbs}(values(nt))
 end
 
 function add_suffix(
-    components::Union{Tuple, AbstractVector}, 
-    traj::NamedTrajectory, 
-    suffix::String
+    components::Union{Tuple,AbstractVector},
+    traj::NamedTrajectory,
+    suffix::String,
 )
     return add_suffix(get_components(components, traj), suffix)
 end
@@ -531,12 +552,12 @@ function add_suffix(traj::NamedTrajectory, suffix::String)
     return NamedTrajectory(
         add_suffix(traj.names, traj, suffix),
         add_suffix(traj.global_names, traj, suffix);
-        controls=add_suffix(traj.control_names, suffix),
-        timestep=add_suffix(traj.timestep, suffix),
-        bounds=add_suffix(traj.bounds, suffix),
-        initial=add_suffix(traj.initial, suffix),
-        final=add_suffix(traj.final, suffix),
-        goal=add_suffix(traj.goal, suffix)
+        controls = add_suffix(traj.control_names, suffix),
+        timestep = add_suffix(traj.timestep, suffix),
+        bounds = add_suffix(traj.bounds, suffix),
+        initial = add_suffix(traj.initial, suffix),
+        final = add_suffix(traj.final, suffix),
+        goal = add_suffix(traj.goal, suffix),
     )
 end
 
@@ -552,7 +573,7 @@ function remove_suffix end
 
 function remove_suffix(s::String, suffix::String)
     if endswith(s, suffix)
-        return chop(s, tail=length(suffix))
+        return chop(s, tail = length(suffix))
     else
         throw(ArgumentError("Suffix '$suffix' not found at the end of '$s'"))
     end
@@ -561,9 +582,9 @@ end
 remove_suffix(symb::Symbol, suffix::String) = Symbol(remove_suffix(String(symb), suffix))
 
 function remove_suffix(
-    symbs::Tuple, 
-    suffix::String; 
-    exclude::AbstractVector{<:Symbol}=Symbol[]
+    symbs::Tuple,
+    suffix::String;
+    exclude::AbstractVector{<:Symbol} = Symbol[],
 )
     return Tuple(s ∈ exclude ? s : remove_suffix(s, suffix) for s ∈ symbs)
 end
@@ -571,15 +592,15 @@ end
 function remove_suffix(
     symbs::AbstractVector,
     suffix::String;
-    exclude::AbstractVector{<:Symbol}=Symbol[]
+    exclude::AbstractVector{<:Symbol} = Symbol[],
 )
     return [s ∈ exclude ? s : remove_suffix(s, suffix) for s ∈ symbs]
 end
 
 function remove_suffix(
-    nt::NamedTuple, 
-    suffix::String; 
-    exclude::AbstractVector{<:Symbol}=Symbol[]
+    nt::NamedTuple,
+    suffix::String;
+    exclude::AbstractVector{<:Symbol} = Symbol[],
 )
     symbs = Tuple(k ∈ exclude ? k : remove_suffix(k, suffix) for k ∈ keys(nt))
     return NamedTuple{symbs}(values(nt))
@@ -597,21 +618,19 @@ Get the data with the suffix from the object. Remove the suffix if `remove=true`
 """
 function get_suffix end
 
-function get_suffix(
-    nt::NamedTuple, 
-    suffix::String; 
-    remove::Bool=false
-)
-    names = Tuple(remove ? remove_suffix(k, suffix) : k for (k, v) ∈ pairs(nt) if endswith(k, suffix))
+function get_suffix(nt::NamedTuple, suffix::String; remove::Bool = false)
+    names = Tuple(
+        remove ? remove_suffix(k, suffix) : k for (k, v) ∈ pairs(nt) if endswith(k, suffix)
+    )
     values = [v for (k, v) ∈ pairs(nt) if endswith(k, suffix)]
     return NamedTuple{names}(values)
 end
 
 function get_suffix(
-    traj::NamedTrajectory, 
-    suffix::String; 
-    timestep::Symbol=traj.timestep,
-    remove::Bool=false
+    traj::NamedTrajectory,
+    suffix::String;
+    timestep::Symbol = traj.timestep,
+    remove::Bool = false,
 )
     # exclude from suffix removal a timestep not ending in suffix
     if endswith(timestep, suffix)
@@ -626,27 +645,27 @@ function get_suffix(
     component_names = [n for n in traj.names if endswith(n, suffix) || n == timestep]
     components = get_components(component_names, traj)
     if remove
-        components = remove_suffix(components, suffix; exclude=exclude)
+        components = remove_suffix(components, suffix; exclude = exclude)
     end
 
     gcomponent_names = [n for n in traj.global_names if endswith(n, suffix)]
     global_components = get_components(gcomponent_names, traj)
     if remove
-        global_components = remove_suffix(global_components, suffix; exclude=exclude)
+        global_components = remove_suffix(global_components, suffix; exclude = exclude)
     end
 
     if isempty(component_names)
         error("No components found with suffix '$suffix'")
-    end 
+    end
 
     return NamedTrajectory(
         components,
         global_components,
-        timestep=new_timestep,
-        bounds=get_suffix(traj.bounds, suffix, remove=remove),
-        initial=get_suffix(traj.initial, suffix, remove=remove),
-        final=get_suffix(traj.final, suffix, remove=remove),
-        goal=get_suffix(traj.goal, suffix, remove=remove)
+        timestep = new_timestep,
+        bounds = get_suffix(traj.bounds, suffix, remove = remove),
+        initial = get_suffix(traj.initial, suffix, remove = remove),
+        final = get_suffix(traj.final, suffix, remove = remove),
+        goal = get_suffix(traj.goal, suffix, remove = remove),
     )
 end
 
@@ -726,15 +745,15 @@ traj_random = add_control_derivatives(
 function add_control_derivatives(
     traj::NamedTrajectory,
     n_derivatives::Int;
-    control_name::Symbol=:u,
-    derivative_bounds::Union{Nothing, Tuple{Vararg{VectorBound}}}=nothing,
-    zero_initial_and_final_derivative::Bool=false,
-    random_init::Bool=false,
-    drive_derivative_σ::Float64=0.1
+    control_name::Symbol = :u,
+    derivative_bounds::Union{Nothing,Tuple{Vararg{VectorBound}}} = nothing,
+    zero_initial_and_final_derivative::Bool = false,
+    random_init::Bool = false,
+    drive_derivative_σ::Float64 = 0.1,
 )
     @assert control_name in keys(traj.components) "Control '$control_name' not found in trajectory"
     @assert n_derivatives > 0 "n_derivatives must be positive"
-    
+
     if !isnothing(derivative_bounds)
         @assert length(derivative_bounds) == n_derivatives "derivative_bounds must have $n_derivatives elements"
     end
@@ -744,26 +763,24 @@ function add_control_derivatives(
     Δt = traj[traj.timestep]
     T = size(u, 2)
     n_drives = size(u, 1)
-    
+
     # Generate derivative names
-    derivative_names = Tuple([
-        Symbol("d"^i * string(control_name)) for i = 1:n_derivatives
-    ])
-    
+    derivative_names = Tuple([Symbol("d"^i * string(control_name)) for i = 1:n_derivatives])
+
     # Compute or randomly initialize control derivatives
     control_data = Matrix{Float64}[u]
-    
+
     if random_init
         # Random initialization mode
-        for _ in 1:n_derivatives
+        for _ = 1:n_derivatives
             push!(control_data, randn(n_drives, T) * drive_derivative_σ)
         end
     else
         # Finite difference mode
-        for n in 1:n_derivatives
+        for n = 1:n_derivatives
             # Compute next derivative
             push!(control_data, Utils.derivative(control_data[end], Δt))
-            
+
             # Adjust penultimate point to avoid constraint violations
             # We adjust the PREVIOUS derivative level using the current one
             if n > 1
@@ -772,30 +789,33 @@ function add_control_derivatives(
             end
         end
     end
-    
+
     # Build new components data by extracting existing data and adding derivatives
     existing_comp_names = Tuple(keys(traj.components))
     existing_comp_data = [Matrix(traj[name]) for name in existing_comp_names]
-    
+
     # Create vectors for new component names and data  
     all_comp_names = (existing_comp_names..., derivative_names...)
     all_comp_data = [existing_comp_data..., control_data[2:end]...]  # Skip u since it's already in existing
-    
+
     # Create NamedTuple of component data for the constructor
     comps_data = NamedTuple{all_comp_names}(Tuple(all_comp_data))
-    
+
     # Extract global component data (if any)
     if traj.global_components isa NamedTuple && !isempty(traj.global_components)
         global_comp_names = keys(traj.global_components)
-        global_comp_data = [Vector(traj.global_data[traj.global_components[name]]) for name in global_comp_names]
+        global_comp_data = [
+            Vector(traj.global_data[traj.global_components[name]]) for
+            name in global_comp_names
+        ]
         global_comps_data = NamedTuple{Tuple(global_comp_names)}(Tuple(global_comp_data))
     else
         global_comps_data = NamedTuple()
     end
-    
+
     # Update controls tuple to include derivatives
     new_controls = (traj.control_names..., derivative_names...)
-    
+
     # Update bounds if provided
     new_bounds = traj.bounds
     if !isnothing(derivative_bounds)
@@ -803,27 +823,27 @@ function add_control_derivatives(
             new_bounds = merge(new_bounds, (; name => derivative_bounds[i]))
         end
     end
-    
+
     # Update initial/final constraints for zero derivatives at boundaries
     new_initial = traj.initial
     new_final = traj.final
-    
+
     if zero_initial_and_final_derivative && n_derivatives > 0
         first_derivative = derivative_names[1]
         new_initial = merge(new_initial, (; first_derivative => zeros(n_drives)))
         new_final = merge(new_final, (; first_derivative => zeros(n_drives)))
     end
-    
+
     # Create new trajectory with derivatives
     return NamedTrajectory(
         comps_data,
         global_comps_data;
-        controls=new_controls,
-        timestep=traj.timestep,
-        bounds=new_bounds,
-        initial=new_initial,
-        final=new_final,
-        goal=traj.goal
+        controls = new_controls,
+        timestep = traj.timestep,
+        bounds = new_bounds,
+        initial = new_initial,
+        final = new_final,
+        goal = traj.goal,
     )
 end
 
@@ -833,14 +853,10 @@ end
     # Create a simple trajectory with controls
     T = 10
     n_drives = 2
-    u = hcat(
-        zeros(n_drives),
-        randn(n_drives, T - 2) * 0.1,
-        zeros(n_drives)
-    )
+    u = hcat(zeros(n_drives), randn(n_drives, T - 2) * 0.1, zeros(n_drives))
     Δt = fill(0.1, T)
     Ũ⃗ = randn(8, T)  # Random unitary iso-vec
-    
+
     traj = NamedTrajectory(
         (Ũ⃗ = Ũ⃗, u = u, Δt = reshape(Δt, 1, T));
         controls = (:u, :Δt),
@@ -848,23 +864,23 @@ end
         bounds = (u = ([-1.0, -1.0], [1.0, 1.0]),),
         initial = (Ũ⃗ = Ũ⃗[:, 1], u = zeros(n_drives)),
         final = (u = zeros(n_drives),),
-        goal = (Ũ⃗ = Ũ⃗[:, end],)
+        goal = (Ũ⃗ = Ũ⃗[:, end],),
     )
-    
+
     # Add one derivative
     traj_with_du = add_control_derivatives(traj, 1)
-    
+
     @test traj_with_du isa NamedTrajectory
     @test :du in keys(traj_with_du.components)
     @test size(traj_with_du[:du]) == (n_drives, T)
     @test :du in traj_with_du.control_names
-    
+
     # Verify original trajectory is unchanged
     @test !(:du in keys(traj.components))
-    
+
     # Add two derivatives
     traj_with_ddu = add_control_derivatives(traj, 2)
-    
+
     @test :du in keys(traj_with_ddu.components)
     @test :ddu in keys(traj_with_ddu.components)
     @test size(traj_with_ddu[:du]) == (n_drives, T)
@@ -879,32 +895,29 @@ end
     u = randn(n_drives, T) * 0.1
     Δt = fill(0.1, T)
     Ũ⃗ = randn(8, T)
-    
+
     traj = NamedTrajectory(
         (Ũ⃗ = Ũ⃗, u = u, Δt = reshape(Δt, 1, T));
         controls = (:u, :Δt),
         timestep = :Δt,
         bounds = (u = ([-1.0, -1.0], [1.0, 1.0]),),
         initial = (Ũ⃗ = Ũ⃗[:, 1],),
-        goal = (Ũ⃗ = Ũ⃗[:, end],)
+        goal = (Ũ⃗ = Ũ⃗[:, end],),
     )
-    
+
     # Add derivatives with bounds
     du_bounds = ([-0.5, -0.5], [0.5, 0.5])
     ddu_bounds = ([-1.0, -1.0], [1.0, 1.0])
-    
-    traj_bounded = add_control_derivatives(
-        traj, 
-        2;
-        derivative_bounds=(du_bounds, ddu_bounds)
-    )
-    
+
+    traj_bounded =
+        add_control_derivatives(traj, 2; derivative_bounds = (du_bounds, ddu_bounds))
+
     @test traj_bounded isa NamedTrajectory
     @test haskey(traj_bounded.bounds, :du)
     @test haskey(traj_bounded.bounds, :ddu)
     @test traj_bounded.bounds[:du] == du_bounds
     @test traj_bounded.bounds[:ddu] == ddu_bounds
-    
+
     # Original bounds should be preserved
     @test haskey(traj_bounded.bounds, :u)
     @test traj_bounded.bounds[:u] == traj.bounds[:u]
@@ -916,29 +929,26 @@ end
     u = randn(n_drives, T) * 0.1
     Δt = fill(0.1, T)
     Ũ⃗ = randn(8, T)
-    
+
     traj = NamedTrajectory(
         (Ũ⃗ = Ũ⃗, u = u, Δt = reshape(Δt, 1, T));
         controls = (:u, :Δt),
         timestep = :Δt,
         initial = (Ũ⃗ = Ũ⃗[:, 1], u = zeros(n_drives)),
         final = (u = zeros(n_drives),),
-        goal = (Ũ⃗ = Ũ⃗[:, end],)
+        goal = (Ũ⃗ = Ũ⃗[:, end],),
     )
-    
+
     # Add derivative with zero boundary conditions
-    traj_zero_bc = add_control_derivatives(
-        traj,
-        1;
-        zero_initial_and_final_derivative=true
-    )
-    
+    traj_zero_bc =
+        add_control_derivatives(traj, 1; zero_initial_and_final_derivative = true)
+
     @test traj_zero_bc isa NamedTrajectory
     @test haskey(traj_zero_bc.initial, :du)
     @test haskey(traj_zero_bc.final, :du)
     @test traj_zero_bc.initial[:du] == zeros(n_drives)
     @test traj_zero_bc.final[:du] == zeros(n_drives)
-    
+
     # Original initial/final constraints should be preserved
     @test haskey(traj_zero_bc.initial, :u)
     @test haskey(traj_zero_bc.final, :u)
@@ -950,25 +960,25 @@ end
     a = randn(n_drives, T) * 0.1
     Δt = fill(0.1, T)
     Ũ⃗ = randn(8, T)
-    
+
     traj = NamedTrajectory(
         (Ũ⃗ = Ũ⃗, a = a, Δt = reshape(Δt, 1, T));
         controls = (:a, :Δt),
         timestep = :Δt,
         initial = (Ũ⃗ = Ũ⃗[:, 1],),
-        goal = (Ũ⃗ = Ũ⃗[:, end],)
+        goal = (Ũ⃗ = Ũ⃗[:, end],),
     )
-    
+
     # Add derivatives for control named 'a'
-    traj_with_da = add_control_derivatives(traj, 1; control_name=:a)
-    
+    traj_with_da = add_control_derivatives(traj, 1; control_name = :a)
+
     @test traj_with_da isa NamedTrajectory
     @test :da in keys(traj_with_da.components)
     @test size(traj_with_da[:da]) == (n_drives, T)
-    
+
     # Add two derivatives
-    traj_with_dda = add_control_derivatives(traj, 2; control_name=:a)
-    
+    traj_with_dda = add_control_derivatives(traj, 2; control_name = :a)
+
     @test :da in keys(traj_with_dda.components)
     @test :dda in keys(traj_with_dda.components)
 end
@@ -979,25 +989,29 @@ end
     u = randn(n_drives, T) * 0.1
     Δt = fill(0.1, T)
     Ũ⃗ = randn(8, T)
-    
+
     traj = NamedTrajectory(
         (Ũ⃗ = Ũ⃗, u = u, Δt = reshape(Δt, 1, T));
         controls = (:u, :Δt),
         timestep = :Δt,
         initial = (Ũ⃗ = Ũ⃗[:, 1],),
-        goal = (Ũ⃗ = Ũ⃗[:, end],)
+        goal = (Ũ⃗ = Ũ⃗[:, end],),
     )
-    
+
     # Control not found
     @test_throws AssertionError add_control_derivatives(
-        traj, 1; control_name=:nonexistent
+        traj,
+        1;
+        control_name = :nonexistent,
     )
-    
+
     # Wrong number of bounds
     @test_throws AssertionError add_control_derivatives(
-        traj, 2; derivative_bounds=(([-1.0, -1.0], [1.0, 1.0]),)
+        traj,
+        2;
+        derivative_bounds = (([-1.0, -1.0], [1.0, 1.0]),),
     )
-    
+
     # Zero or negative derivatives
     @test_throws AssertionError add_control_derivatives(traj, 0)
     @test_throws AssertionError add_control_derivatives(traj, -1)
@@ -1005,48 +1019,40 @@ end
 
 @testitem "add_control_derivatives with random initialization" begin
     using Statistics: mean
-    
+
     T = 10
     n_drives = 2
     u = randn(n_drives, T) * 0.1
     Δt = fill(0.1, T)
     Ũ⃗ = randn(8, T)
-    
+
     traj = NamedTrajectory(
         (Ũ⃗ = Ũ⃗, u = u, Δt = reshape(Δt, 1, T));
         controls = (:u, :Δt),
         timestep = :Δt,
         initial = (Ũ⃗ = Ũ⃗[:, 1],),
-        goal = (Ũ⃗ = Ũ⃗[:, end],)
+        goal = (Ũ⃗ = Ũ⃗[:, end],),
     )
-    
+
     # Random initialization
-    traj_random = add_control_derivatives(
-        traj,
-        2;
-        random_init=true,
-        drive_derivative_σ=0.05
-    )
-    
+    traj_random =
+        add_control_derivatives(traj, 2; random_init = true, drive_derivative_σ = 0.05)
+
     @test traj_random isa NamedTrajectory
     @test :du in keys(traj_random.components)
     @test :ddu in keys(traj_random.components)
     @test size(traj_random[:du]) == (n_drives, T)
     @test size(traj_random[:ddu]) == (n_drives, T)
-    
+
     # Check that derivatives are random (not computed via finite differences)
     # They should be roughly in the range of the sigma
     @test maximum(abs.(traj_random[:du])) < 0.5  # Should be mostly within a few sigma
     @test maximum(abs.(traj_random[:ddu])) < 0.5
-    
+
     # Test with different sigma
-    traj_random2 = add_control_derivatives(
-        traj,
-        1;
-        random_init=true,
-        drive_derivative_σ=0.5
-    )
-    
+    traj_random2 =
+        add_control_derivatives(traj, 1; random_init = true, drive_derivative_σ = 0.5)
+
     # Larger sigma should give larger values on average
     @test mean(abs.(traj_random2[:du])) > mean(abs.(traj_random[:du]))
 end
@@ -1058,7 +1064,7 @@ end
     N = 10
     dim = 5
     data = randn(dim, N)
-    traj = NamedTrajectory(data, (x = 1:3, y=4:4, z=5:5), timestep=:z)
+    traj = NamedTrajectory(data, (x = 1:3, y = 4:4, z = 5:5), timestep = :z)
 
     traj1 = add_component(traj, :b, randn(N))
     @test traj1.data[1:dim, :] == data
@@ -1068,14 +1074,14 @@ end
 
     da = randn(2, N)
     db = randn(3, N)
-    traj3 = add_components(traj, (a=da, b=db))
+    traj3 = add_components(traj, (a = da, b = db))
     @test traj3.data[1:dim, :] == data
     @test traj3[:a] == da
     @test traj3[:b] == db
 
     # test adding global component
     dg = randn(4)
-    traj4 = add_component(traj, :g, dg; type=:global)
+    traj4 = add_component(traj, :g, dg; type = :global)
     @test traj4.data == data
     @test traj4.global_data == dg
 end
@@ -1083,7 +1089,7 @@ end
 @testitem "remove component" begin
     N = 10
     data = randn(5, N)
-    traj = NamedTrajectory(data, (x = 1:3, y=4:4, z=5:5), timestep=:z)
+    traj = NamedTrajectory(data, (x = 1:3, y = 4:4, z = 5:5), timestep = :z)
     traj1 = remove_component(traj, :y)
     for name in [:x, :z]
         @test name ∈ traj1.names
@@ -1091,7 +1097,7 @@ end
     end
 
     # test removing timestep 
-    traj2 = remove_component(traj, :z, new_timestep=:y)
+    traj2 = remove_component(traj, :z, new_timestep = :y)
     for name in [:x, :y]
         @test name ∈ traj2.names
         @test traj2[name] == traj[name]
@@ -1101,19 +1107,22 @@ end
     # remove multiple
     da = randn(2, N)
     db = randn(3, N)
-    traj3 = add_components(traj, (a=da, b=db))
+    traj3 = add_components(traj, (a = da, b = db))
     @test remove_components(traj3, [:a, :b]) == traj
 
     # test removing global component
 
     traj4 = NamedTrajectory(
-        data, (x = 1:3, y=4:4, z=5:5), timestep=:z, 
-        global_data=[1.0, 2.0], global_components=(g1=1:1, g2=2:2)
+        data,
+        (x = 1:3, y = 4:4, z = 5:5),
+        timestep = :z,
+        global_data = [1.0, 2.0],
+        global_components = (g1 = 1:1, g2 = 2:2),
     )
     traj5 = remove_component(traj4, :g1)
     @test :g1 ∉ traj5.global_names
     @test traj5.global_data == [2.0]
-    @test traj5.global_components == (g2 = 1:1,)    
+    @test traj5.global_components == (g2 = 1:1,)
 end
 
 @testitem "update! data" begin
@@ -1124,10 +1133,13 @@ end
     orig_data = copy(data)
     orig_global_data = copy(global_data)
     traj = NamedTrajectory(
-        data, (x = 1:3, y=4:4, z=5:5), timestep=:z, 
-        global_data=global_data, global_components=(g1=1:1, g2=2:2)
+        data,
+        (x = 1:3, y = 4:4, z = 5:5),
+        timestep = :z,
+        global_data = global_data,
+        global_components = (g1 = 1:1, g2 = 2:2),
     )
-    
+
     # update data
     update!(traj, :x, zeros(traj.dims[:x], N))
     @test traj[:x] == zeros(traj.dims[:x], N)
@@ -1140,13 +1152,13 @@ end
     @test traj.global_data == orig_global_data
 
     # update global data
-    update!(traj, zeros(traj.global_dim), type=:global)
+    update!(traj, zeros(traj.global_dim), type = :global)
     @test traj.datavec == ones(traj.dim * traj.N) # stays the same from before
     @test traj.global_data == zeros(traj.global_dim) # changes
 
     # update both
     new_data = vcat(vec(orig_data), orig_global_data)
-    update!(traj, new_data, type=:both)
+    update!(traj, new_data, type = :both)
     @test traj.data == orig_data
     @test traj.global_data == orig_global_data
 end
@@ -1177,10 +1189,8 @@ end
     using Random
 
     data = randn(5, 10)
-    traj = NamedTrajectory(
-        data, (x = 1:3, y=4:4, z=5:5), timestep=:z, 
-        bounds=(x = 1,)
-    )
+    traj =
+        NamedTrajectory(data, (x = 1:3, y = 4:4, z = 5:5), timestep = :z, bounds = (x = 1,))
     update_bound!(traj, :x, 2)
     @test traj.bounds[:x] == ([-2.0, -2.0, -2.0], [2.0, 2.0, 2.0])
 
@@ -1194,9 +1204,9 @@ end
 @testitem "merge" begin
     using Random
     N = 10
-    traj1 = NamedTrajectory(randn(5, N), (x=1:3, y=4:4, z=5:5), timestep=:z)
-    traj2 = NamedTrajectory(randn(5, N), (a=1:3, b=4:4, c=5:5), timestep=:c)
-    
+    traj1 = NamedTrajectory(randn(5, N), (x = 1:3, y = 4:4, z = 5:5), timestep = :z)
+    traj2 = NamedTrajectory(randn(5, N), (a = 1:3, b = 4:4, c = 5:5), timestep = :c)
+
     traj3 = merge(traj1, traj2)
     @test traj3.timestep == traj2.timestep
     @test issetequal(traj3.names, vcat(traj1.names..., traj2.names...))
@@ -1208,7 +1218,8 @@ end
     # merge x, u, Δt
     traj1 = rand(NamedTrajectory, N)
     traj2 = rand(NamedTrajectory, N)
-    trajs_merged = merge([traj1, traj2]; merge_names=(x=1, u=2, Δt=1), timestep=:Δt)
+    trajs_merged =
+        merge([traj1, traj2]; merge_names = (x = 1, u = 2, Δt = 1), timestep = :Δt)
     @test trajs_merged.timestep == :Δt
     @test issetequal(trajs_merged.names, (:x, :u, :Δt))
     @test trajs_merged.x == traj1.x
@@ -1216,35 +1227,44 @@ end
     @test trajs_merged.Δt == traj1.Δt
 
     # merge collision
-    @test_throws ArgumentError merge(traj1, traj2, merge_names=(x=1, u=1))
+    @test_throws ArgumentError merge(traj1, traj2, merge_names = (x = 1, u = 1))
 
     # cannot find timestep
-    @test_throws ArgumentError merge(traj1, traj2, merge_names=(x=1, u=1, Δt=1), timestep=:dt)
+    @test_throws ArgumentError merge(
+        traj1,
+        traj2,
+        merge_names = (x = 1, u = 1, Δt = 1),
+        timestep = :dt,
+    )
 
     # merge vector
-    trajs = [rand(NamedTrajectory, N) for _ in 1:5]
-    trajs_merged = merge(trajs; merge_names=(x=1, u=2, Δt=1), timestep=:Δt)
+    trajs = [rand(NamedTrajectory, N) for _ = 1:5]
+    trajs_merged = merge(trajs; merge_names = (x = 1, u = 2, Δt = 1), timestep = :Δt)
     @test trajs_merged isa NamedTrajectory
 
     # merge with exclude
-    trajs_exclude = merge(trajs; merge_names=(u=2, Δt=1), exclude_names=[:x,])
+    trajs_exclude = merge(trajs; merge_names = (u = 2, Δt = 1), exclude_names = [:x])
     @test trajs_exclude.timestep == :Δt
     @test issetequal(trajs_exclude.names, (:u, :Δt))
 end
 
 @testitem "returning times" begin
     data = randn(5, 10)
-    traj = NamedTrajectory(data, (x=1:3, y=4:4, z=5:5), timestep=:z)
-    @test get_times(traj) ≈ [0.0, cumsum(data[end, 1:end-1])...]
+    traj = NamedTrajectory(data, (x = 1:3, y = 4:4, z = 5:5), timestep = :z)
+    @test get_times(traj) ≈ [0.0, cumsum(data[end, 1:(end-1)])...]
 end
 
 @testitem "suffix tests" begin
     N = 10
     data = randn(5, N)
     traj = NamedTrajectory(
-        data, (x = 1:3, y=4:4, z=5:5), timestep=:z, 
-        global_data=[1.0, 2.0], global_components=(a = 1:2, ), bounds = (x = 1.0, y = 2.0,)
-    )    
+        data,
+        (x = 1:3, y = 4:4, z = 5:5),
+        timestep = :z,
+        global_data = [1.0, 2.0],
+        global_components = (a = 1:2,),
+        bounds = (x = 1.0, y = 2.0),
+    )
     suffix = "_test"
     traj_suffixed = add_suffix(traj, suffix)
     @test all(endswith.(keys(traj_suffixed.components), suffix))
@@ -1259,17 +1279,17 @@ end
     @test traj_suffixed.bounds == add_suffix(traj.bounds, suffix)
 
     # test removing suffix
-    traj2 = NamedTrajectory(randn(5, N), (x = 1:3, y=4:4, z=5:5), timestep=:z,)
+    traj2 = NamedTrajectory(randn(5, N), (x = 1:3, y = 4:4, z = 5:5), timestep = :z)
     merge_traj = merge(traj_suffixed, traj2)
     # need to choose the right timestep to keep
-    traj_unsuffixed = get_suffix(
-        merge_traj, suffix, timestep=add_suffix(:z, suffix), remove=true
-    )
+    traj_unsuffixed =
+        get_suffix(merge_traj, suffix, timestep = add_suffix(:z, suffix), remove = true)
     @test traj_unsuffixed == traj
-    traj_got = get_suffix(merge_traj, suffix, remove=false)
+    traj_got = get_suffix(merge_traj, suffix, remove = false)
     # keeps the original timestep, so remove it
     @test traj_got.timestep == traj.timestep
-    @test remove_component(traj_got, :z, new_timestep=add_suffix(:z, suffix)) == traj_suffixed
+    @test remove_component(traj_got, :z, new_timestep = add_suffix(:z, suffix)) ==
+          traj_suffixed
 end
 
 # ============================================================================= #
