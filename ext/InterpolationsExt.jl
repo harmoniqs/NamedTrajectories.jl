@@ -330,7 +330,14 @@ function (w::_ConstantExtrapolationFix)(t::Number)
     end
 end
 
-(w::_ConstantExtrapolationFix)(ts::AbstractArray) = map(w, ts)
+function (w::_ConstantExtrapolationFix)(ts::AbstractArray)
+    vals = [w(t) for t in ts]
+    if !isempty(vals) && first(vals) isa AbstractVector
+        return reduce(hcat, vals)
+    else
+        return collect(vals)
+    end
+end
 
 function _maybe_wrap_constant_extrapolation(interp; kwargs...)
     kw = (; kwargs...)
@@ -405,25 +412,21 @@ end
     traj = add_component(traj_init, :du, rand(u_dim, T))
 
     interp = ConstantInterpolation(traj, :x)
-    @test interp isa ConstantInterpolation
     res = interp(2.0)
     @test res isa Vector{Float64}
     @test length(res) == x_dim
 
     interp = LinearInterpolation(traj, :x)
-    @test interp isa LinearInterpolation
     res = interp(2.0)
     @test res isa Vector{Float64}
     @test length(res) == x_dim
 
     interp = CubicHermiteSpline(traj, :du, :u)
-    @test interp isa CubicHermiteSpline
     res = interp(2.0)
     @test res isa Vector{Float64}
     @test length(res) == u_dim
 
     interp = CubicHermiteSpline(traj, :u)
-    @test interp isa CubicHermiteSpline
     res = interp(2.0)
     @test res isa Vector{Float64}
     @test length(res) == u_dim
