@@ -289,11 +289,7 @@ interp = CubicHermiteSpline(traj, :u)
 value = interp(2.5)
 ```
 """
-function DataInterpolations.CubicHermiteSpline(
-    traj::NamedTrajectory,
-    x::Symbol;
-    kwargs...,
-)
+function DataInterpolations.CubicHermiteSpline(traj::NamedTrajectory, x::Symbol; kwargs...)
     dx = Symbol("d" * string(x))
     return CubicHermiteSpline(traj, dx, x; kwargs...)
 end
@@ -307,7 +303,7 @@ end
 
 @inline function _boundary_value(u, idx)
     if u isa AbstractArray{<:Number} && ndims(u) > 1
-        ax = axes(u)[1:end-1]
+        ax = axes(u)[1:(end-1)]
         return u[ax..., idx]
     else
         return u[idx]
@@ -340,7 +336,7 @@ function _maybe_wrap_constant_extrapolation(interp; kwargs...)
     kw = (; kwargs...)
     none = DataInterpolations.ExtrapolationType.None
     global_ex = get(kw, :extrapolation, none)
-    left_ex  = global_ex != none ? global_ex : get(kw, :extrapolation_left, none)
+    left_ex = global_ex != none ? global_ex : get(kw, :extrapolation_left, none)
     right_ex = global_ex != none ? global_ex : get(kw, :extrapolation_right, none)
 
     left_const = left_ex == DataInterpolations.ExtrapolationType.Constant
@@ -445,7 +441,8 @@ end
     @test length(resL) == x_dim
     @test resL ≈ traj[:x][:, 1]
 
-    interp_ch_const = CubicHermiteSpline(traj, :u; extrapolation = ExtrapolationType.Constant)
+    interp_ch_const =
+        CubicHermiteSpline(traj, :u; extrapolation = ExtrapolationType.Constant)
     resR = interp_ch_const(tmax + 1.0)
     @test resR isa Vector{Float64}
     @test length(resR) == u_dim
