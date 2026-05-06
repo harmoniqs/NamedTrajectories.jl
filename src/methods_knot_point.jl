@@ -97,4 +97,24 @@ end
           u_orig[:, idx]
 end
 
+@testitem "KnotPoint getindex via Symbol" begin
+    traj = rand(NamedTrajectory, 6)
+    kp = traj[3]
+
+    # Component access via getindex: should return view of slice data.
+    x_view = kp[:x]
+    @test x_view == traj.x[:, 3]
+    @test x_view == kp.x
+
+    # Field access via getindex: returns the underlying field value, not a view.
+    @test kp[:components] === kp.components
+end
+
+@testitem "KnotPoint setproperty! on a struct field errors" begin
+    traj = rand(NamedTrajectory, 4)
+    kp = traj[2]
+    # KnotPoint is immutable; assigning to a struct field must error.
+    @test_throws ErrorException kp.components = kp.components
+end
+
 end
