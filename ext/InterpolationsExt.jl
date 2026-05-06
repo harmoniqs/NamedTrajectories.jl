@@ -155,10 +155,16 @@ value = interp(2.5)
 function DataInterpolations.ConstantInterpolation(
     traj::NamedTrajectory,
     x::Symbol;
+    extrapolation = ExtrapolationType.Constant,
     kwargs...,
 )
     @assert x ∈ traj.names "Component $x not found in trajectory names."
-    return ConstantInterpolation(traj[x], get_times(traj); kwargs...)
+    interp = ConstantInterpolation(traj[x], get_times(traj); kwargs...)
+    return _maybe_wrap_constant_extrapolation(
+        interp;
+        extrapolation = extrapolation,
+        kwargs...,
+    )
 end
 
 """
@@ -189,9 +195,19 @@ interp = LinearInterpolation(traj, :x)
 value = interp(2.5)
 ```
 """
-function DataInterpolations.LinearInterpolation(traj::NamedTrajectory, x::Symbol; kwargs...)
+function DataInterpolations.LinearInterpolation(
+    traj::NamedTrajectory,
+    x::Symbol;
+    extrapolation = ExtrapolationType.Constant,
+    kwargs...,
+)
     @assert x ∈ traj.names "Component $x not found in trajectory names."
-    return LinearInterpolation(traj[x], get_times(traj); kwargs...)
+    interp = LinearInterpolation(traj[x], get_times(traj); kwargs...)
+    return _maybe_wrap_constant_extrapolation(
+        interp;
+        extrapolation = extrapolation,
+        kwargs...,
+    )
 end
 
 """
@@ -227,11 +243,17 @@ function DataInterpolations.CubicHermiteSpline(
     traj::NamedTrajectory,
     dx::Symbol,
     x::Symbol;
+    extrapolation = ExtrapolationType.Constant,
     kwargs...,
 )
     @assert x ∈ traj.names "Component $x not found in trajectory names."
     @assert dx ∈ traj.names "Derivative component $dx not found in trajectory names."
-    return CubicHermiteSpline(traj[dx], traj[x], get_times(traj); kwargs...)
+    interp = CubicHermiteSpline(traj[dx], traj[x], get_times(traj); kwargs...)
+    return _maybe_wrap_constant_extrapolation(
+        interp;
+        extrapolation = extrapolation,
+        kwargs...,
+    )
 end
 
 """
@@ -247,7 +269,7 @@ Create a cubic Hermite spline interpolation object for a trajectory component wi
 - `kwargs...`: Additional keyword arguments passed to `DataInterpolations.CubicHermiteSpline`.
 
 # Returns
-- `CubicHermiteSpline`: An interpolation object that can be called with time values to 
+- `CubicHermiteSpline`: An interpolation object that can be called with time values to
   get interpolated component values.
 
 # Notes
@@ -255,7 +277,7 @@ Create a cubic Hermite spline interpolation object for a trajectory component wi
   For example, if `x = :u`, the derivative component is assumed to be `:du`.
 
 # Throws
-- `AssertionError`: If either component `x` or its automatically inferred derivative component 
+- `AssertionError`: If either component `x` or its automatically inferred derivative component
   is not found in the trajectory.
 
 # Examples
@@ -273,7 +295,73 @@ function DataInterpolations.CubicHermiteSpline(traj::NamedTrajectory, x::Symbol;
 end
 
 # --------------------------------------------------------------------------- #
-# Patches for DataInterpolations.jl
+# Fix: DataInterpolations `ExtrapolationType.Constant` can return a scalar for
+# array-valued data stored as an `AbstractArray{<:Number}` (e.g. a Matrix where
+# the last dimension is the time axis). This wrapper intercepts *only* constant
+# extrapolation and returns the correct boundary slice.
+# --------------------------------------------------------------------------- #
+
+@inline function _boundary_value(u, idx)
+    if u isa AbstractArray{<:Number} && ndims(u) > 1
+        ax = axes(u)[1:(end-1)]
+        return u[ax..., idx]
+    else
+        return u[idx]
+    end
+end
+
+struct _ConstantExtrapolationFix{I,L,R}
+    interp::I
+    left::L
+    right::R
+    left_const::Bool
+    right_const::Bool
+end
+
+function (w::_ConstantExtrapolationFix)(t::Number)
+    tmin = first(w.interp.t)
+    tmax = last(w.interp.t)
+    if w.left_const && t < tmin
+        return w.left
+    elseif w.right_const && t > tmax
+        return w.right
+    else
+        return w.interp(t)
+    end
+end
+
+function (w::_ConstantExtrapolationFix)(ts::AbstractArray)
+    vals = [w(t) for t in ts]
+    if !isempty(vals) && first(vals) isa AbstractVector
+        return reduce(hcat, vals)
+    else
+        return collect(vals)
+    end
+end
+
+function _maybe_wrap_constant_extrapolation(interp; kwargs...)
+    kw = (; kwargs...)
+    none = DataInterpolations.ExtrapolationType.None
+    global_ex = get(kw, :extrapolation, none)
+    left_ex = global_ex != none ? global_ex : get(kw, :extrapolation_left, none)
+    right_ex = global_ex != none ? global_ex : get(kw, :extrapolation_right, none)
+
+    left_const = left_ex == DataInterpolations.ExtrapolationType.Constant
+    right_const = right_ex == DataInterpolations.ExtrapolationType.Constant
+    if !(left_const || right_const)
+        return interp
+    end
+
+    idxL = firstindex(interp.t)
+    idxR = lastindex(interp.t)
+    left_val = _boundary_value(interp.u, idxL)
+    right_val = _boundary_value(interp.u, idxR)
+    return _ConstantExtrapolationFix(interp, left_val, right_val, left_const, right_const)
+end
+
+
+# --------------------------------------------------------------------------- #
+# Fix: DataInterpolations does not handle vector valued data for splines.
 # --------------------------------------------------------------------------- #
 
 # DataInterpolations.jl:src/parameter_caches.jl
@@ -324,28 +412,43 @@ end
     traj = add_component(traj_init, :du, rand(u_dim, T))
 
     interp = ConstantInterpolation(traj, :x)
-    @test interp isa ConstantInterpolation
     res = interp(2.0)
     @test res isa Vector{Float64}
     @test length(res) == x_dim
 
     interp = LinearInterpolation(traj, :x)
-    @test interp isa LinearInterpolation
     res = interp(2.0)
     @test res isa Vector{Float64}
     @test length(res) == x_dim
 
     interp = CubicHermiteSpline(traj, :du, :u)
-    @test interp isa CubicHermiteSpline
     res = interp(2.0)
     @test res isa Vector{Float64}
     @test length(res) == u_dim
 
     interp = CubicHermiteSpline(traj, :u)
-    @test interp isa CubicHermiteSpline
     res = interp(2.0)
     @test res isa Vector{Float64}
     @test length(res) == u_dim
+
+    # Constant extrapolation should preserve the output shape for array-valued data
+    tmin = first(get_times(traj))
+    tmax = last(get_times(traj))
+    interp_const = LinearInterpolation(traj, :x; extrapolation = ExtrapolationType.Constant)
+    resR = interp_const(tmax + 1.0)
+    @test resR isa Vector{Float64}
+    @test length(resR) == x_dim
+    @test resR ≈ traj[:x][:, end]
+    resL = interp_const(tmin - 1.0)
+    @test resL isa Vector{Float64}
+    @test length(resL) == x_dim
+    @test resL ≈ traj[:x][:, 1]
+
+    interp_ch_const =
+        CubicHermiteSpline(traj, :u; extrapolation = ExtrapolationType.Constant)
+    resR = interp_ch_const(tmax + 1.0)
+    @test resR isa Vector{Float64}
+    @test length(resR) == u_dim
 end
 
 @testitem "interpolation basic functionality" begin
