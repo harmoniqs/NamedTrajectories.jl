@@ -1296,4 +1296,55 @@ end
 #                   Add control derivatives to trajectory                       #
 # ============================================================================= #
 
+@testitem "get_components without name list returns all components" begin
+    traj = NamedTrajectory(randn(4, 5), (x = 1:2, u = 3:3, z = 4:4); timestep = :z)
+    comps = get_components(traj)
+    @test keys(comps) == (:x, :u, :z)
+    @test comps.x == traj[:x]
+    @test comps.u == traj[:u]
+end
+
+@testitem "get_component_names: success and error" begin
+    traj = NamedTrajectory(randn(4, 5), (x = 1:2, u = 3:3, z = 4:4); timestep = :z)
+    @test get_component_names(traj, [1, 2]) == [:x]
+    @test get_component_name(traj, [1, 2]) == :x
+    # Indices that don't fully contain any component → error
+    @test_throws ErrorException get_component_names(traj, [99])
+    # Indices that contain multiple components → multiple-name error
+    @test_throws ErrorException get_component_name(traj, [1, 2, 3, 4])
+end
+
+@testitem "get_timesteps and get_duration with symbol timestep" begin
+    data = randn(4, 5)
+    traj = NamedTrajectory(data, (x = 1:3, z = 4:4); timestep = :z)
+    @test get_timesteps(traj) == vec(traj[:z])
+    expected_times = cumsum([0.0, vec(traj[:z])[1:(end-1)]...])
+    @test get_duration(traj) == expected_times[end]
+end
+
+@testitem "merge_outer on tuples and collision detection" begin
+    merge_outer = NamedTrajectories.MethodsNamedTrajectory.merge_outer
+    @test merge_outer((:a, :b), (:c, :d)) == (:a, :b, :c, :d)
+    @test_throws ArgumentError merge_outer((:a, :b), (:b, :c))
+    @test_throws ArgumentError merge_outer((x = 1,), (x = 2,))
+end
+
+@testitem "merge with fewer than two trajectories raises" begin
+    traj = NamedTrajectory(randn(3, 4), (x = 1:2, z = 3:3); timestep = :z)
+    @test_throws ArgumentError merge([traj])
+end
+
+@testitem "add_suffix and remove_suffix on vectors and tuples" begin
+    @test add_suffix([:a, :b], "_x") == [:a_x, :b_x]
+    @test add_suffix([:a, :b], "_x"; exclude = [:b]) == [:a_x, :b]
+
+    @test remove_suffix((:a_x, :b_x), "_x") == (:a, :b)
+    @test remove_suffix((:a_x, :b_x), "_x"; exclude = [:b_x]) == (:a, :b_x)
+    @test remove_suffix([:a_x, :b_x], "_x") == [:a, :b]
+    @test remove_suffix([:a_x, :b_x], "_x"; exclude = [:b_x]) == [:a, :b_x]
+
+    # Suffix-not-present error path
+    @test_throws ArgumentError remove_suffix("hello", "_world")
+end
+
 end

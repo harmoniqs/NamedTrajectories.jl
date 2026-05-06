@@ -342,4 +342,97 @@ end
     @test vec(traj) == vcat(traj.datavec, traj.global_data)
 end
 
+@testitem "size returns (dim, N, global_dim)" begin
+    traj = NamedTrajectory(
+        randn(5, 10),
+        (x = 1:3, y = 4:4, z = 5:5);
+        timestep = :z,
+        global_data = [1.0, 2.0, 3.0],
+        global_components = (a = 1:2, b = 3:3),
+    )
+    sz = size(traj)
+    @test sz.dim == 5
+    @test sz.N == 10
+    @test sz.global_dim == 3
+end
+
+@testitem "show prints components and global components" begin
+    traj_no_global = NamedTrajectory(randn(3, 4), (x = 1:2, z = 3:3); timestep = :z)
+    str_no_global = sprint(show, traj_no_global)
+    @test occursin("N = 4", str_no_global)
+    @test occursin("→ z", str_no_global)
+    @test occursin("x", str_no_global)
+    @test !occursin("),  (", str_no_global)
+
+    traj_global = NamedTrajectory(
+        randn(3, 4),
+        (x = 1:2, z = 3:3);
+        timestep = :z,
+        global_data = [1.0, 2.0],
+        global_components = (g = 1:2,),
+    )
+    str_global = sprint(show, traj_global)
+    @test occursin("N = 4", str_global)
+    @test occursin("g = 1:2", str_global)
+end
+
+@testitem "getindex with vector of integers returns vector of knot points" begin
+    traj = rand(NamedTrajectory, 6)
+    knots = traj[2:4]
+    @test knots isa Vector
+    @test length(knots) == 3
+    @test knots[1].x == traj[2].x
+    @test knots[end].x == traj[4].x
+end
+
+@testitem "isequal mismatch branches" begin
+    base = NamedTrajectory(
+        randn(4, 5),
+        (x = 1:2, y = 3:3, z = 4:4);
+        timestep = :z,
+        global_data = [1.0, 2.0],
+        global_components = (g = 1:2,),
+    )
+
+    # Mismatched component names: rebuild with a different component name set.
+    differ_names = NamedTrajectory(
+        randn(4, 5),
+        (x = 1:2, w = 3:3, z = 4:4);
+        timestep = :z,
+        global_data = [1.0, 2.0],
+        global_components = (g = 1:2,),
+    )
+    @test !isequal(base, differ_names)
+
+    # Same names, different component data.
+    differ_values = NamedTrajectory(
+        randn(4, 5),
+        (x = 1:2, y = 3:3, z = 4:4);
+        timestep = :z,
+        global_data = [1.0, 2.0],
+        global_components = (g = 1:2,),
+    )
+    @test !isequal(base, differ_values)
+
+    # Mismatched global names.
+    differ_globals = NamedTrajectory(
+        copy(base.data),
+        (x = 1:2, y = 3:3, z = 4:4);
+        timestep = :z,
+        global_data = [1.0, 2.0],
+        global_components = (h = 1:2,),
+    )
+    @test !isequal(base, differ_globals)
+
+    # Same global names, different global values.
+    differ_global_values = NamedTrajectory(
+        copy(base.data),
+        (x = 1:2, y = 3:3, z = 4:4);
+        timestep = :z,
+        global_data = [3.0, 4.0],
+        global_components = (g = 1:2,),
+    )
+    @test !isequal(base, differ_global_values)
+end
+
 end

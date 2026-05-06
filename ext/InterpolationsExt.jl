@@ -449,6 +449,37 @@ end
     resR = interp_ch_const(tmax + 1.0)
     @test resR isa Vector{Float64}
     @test length(resR) == u_dim
+
+    # Non-constant extrapolation skips the wrapper and returns the bare interpolation.
+    interp_none = LinearInterpolation(traj, :x; extrapolation = ExtrapolationType.None)
+    @test interp_none isa LinearInterpolation
+end
+
+@testitem "extrapolation wrapper handles scalar-valued (1D) u" begin
+    # NT-aware constructors always pass 2D data, but the internal helpers are
+    # written defensively for 1D u as well. Exercise that branch directly.
+    using DataInterpolations
+    Ext = Base.get_extension(NamedTrajectories, :InterpolationsExt)
+
+    u1d = [10.0, 20.0, 30.0, 40.0]
+    @test Ext._boundary_value(u1d, 1) == 10.0
+    @test Ext._boundary_value(u1d, 4) == 40.0
+
+    times = [0.0, 1.0, 2.0, 3.0]
+    interp = ConstantInterpolation(u1d, times)
+    wrapped = Ext._maybe_wrap_constant_extrapolation(
+        interp;
+        extrapolation = ExtrapolationType.Constant,
+    )
+    @test wrapped isa Ext._ConstantExtrapolationFix
+    @test wrapped(-1.0) == 10.0
+    @test wrapped(10.0) == 40.0
+
+    arr = wrapped([-1.0, 1.5, 10.0])
+    @test arr isa AbstractVector
+    @test length(arr) == 3
+    @test arr[1] == 10.0
+    @test arr[3] == 40.0
 end
 
 @testitem "interpolation basic functionality" begin
@@ -499,6 +530,38 @@ end
     # Check that new data matches the constant values
     @test all(new_traj[:x] .== 1.0)
     @test all(new_traj[:y] .== 0.0)
+end
+
+@testitem "trajectory_interpolation: T::Int variant and mixed kinds" begin
+    using DataInterpolations
+
+    T = 8
+    x_dim = 2
+    u_dim = 2
+    traj_init = rand(NamedTrajectory, T, control_dim = u_dim, state_dim = x_dim)
+    traj = add_component(traj_init, :du, rand(u_dim, T))
+
+    # T::Int variant should produce a trajectory with that many knot points.
+    new_traj = trajectory_interpolation(traj, 2T)
+    @test size(new_traj.data, 2) == 2T
+
+    # Mixing :constant, :linear, :spline, with the timestep auto-merged.
+    interpolations = (x = :constant, u = :spline)
+    mixed = trajectory_interpolation(
+        traj,
+        collect(range(get_times(traj)[1], get_times(traj)[end], length = 2T));
+        interpolations = interpolations,
+    )
+    @test size(mixed.data, 2) == 2T
+    @test :x ∈ mixed.names
+    @test :u ∈ mixed.names
+
+    # Unsupported kind raises an ArgumentError.
+    @test_throws ArgumentError trajectory_interpolation(
+        traj,
+        get_times(traj);
+        interpolations = (x = :nonsense,),
+    )
 end
 
 end
