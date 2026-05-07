@@ -30,11 +30,18 @@ end
 """
     setproperty!(slice::KnotPoint, symb::Symbol, val::Any)
 
-Dispatches setting properties of knot points as either setting a component or a property via `update!` or `setfield!`, respectively.
+Update a component of the knot point in-place via `update!`.
+
+Setting a struct field is not supported — `KnotPoint` is immutable and the
+data buffer is owned by the parent trajectory. Attempting to assign a struct
+field raises an error rather than silently aliasing through `setfield!`.
 """
 function Base.setproperty!(slice::KnotPoint, symb::Symbol, val::Any)
     if symb in fieldnames(KnotPoint)
-        setfield!(slice, symb, val) # will error (KnotPoint is an immutable struct)
+        error(
+            "KnotPoint is immutable; cannot set struct field :$symb. " *
+            "Use traj[i].name = data to update a trajectory component instead.",
+        )
     else
         update!(slice, symb, val)
     end
