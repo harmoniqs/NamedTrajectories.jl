@@ -8,11 +8,7 @@
 @testitem "JET correctness analysis" tags=[:jet] begin
     if VERSION >= v"1.12"
         using JET, NamedTrajectories
-        JET.test_package(
-            NamedTrajectories;
-            target_modules = (NamedTrajectories,),
-            broken = true,
-        )  # TODO: 2 findings
+        JET.test_package(NamedTrajectories; target_modules = (NamedTrajectories,))
     else
         @info "Skipping JET correctness analysis on Julia $VERSION (requires >= 1.12)"
         @test true
