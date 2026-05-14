@@ -168,8 +168,10 @@ function NamedTrajectory(
     gcomps_data::NamedTuple{GN,<:Tuple{Vararg{AbstractVector{<:Real}}}} where {GN};
     kwargs...,
 )
-    # unpack data (promote type)
-    data = vcat([val for (key, val) ∈ pairs(comps_data)]...)
+    # unpack data (promote type). `vcat(values(comps_data)...)` preserves
+    # element types via the tuple — a list comprehension would widen to
+    # `Vector{<:AbstractMatrix{<:Real}}` and trip JET's type inference.
+    data = vcat(values(comps_data)...)
     dim, N = size(data)
 
     # save components of data matrix
@@ -183,7 +185,7 @@ function NamedTrajectory(
 
     # save global componets
     if !isempty(gcomps_data)
-        global_data = vcat([val for (key, val) ∈ pairs(gcomps_data)]...)
+        global_data = vcat(values(gcomps_data)...)
         global_dims_pairs = [(k => length(v)) for (k, v) ∈ pairs(gcomps_data)]
         gcomps_pairs = [(global_dims_pairs[1][1] => 1:global_dims_pairs[1][2])]
         for (k, v) ∈ global_dims_pairs[2:end]
@@ -229,8 +231,13 @@ function NamedTrajectory(
     comps_data::NamedTuple{N,<:Tuple{Vararg{AbstractVecOrMat{<:Real}}}} where {N};
     kwargs...,
 ) # where R <: Real
-    vals = [v isa AbstractVector ? reshape(v, 1, :) : v for v ∈ values(comps_data)]
-    comps_data = NamedTuple([(k => v) for (k, v) ∈ zip(keys(comps_data), vals)])
+    # `map` over a tuple preserves per-element types. A list comprehension would
+    # widen the result to `Vector{<:AbstractMatrix}` and lose information needed
+    # downstream; the corresponding `NamedTuple([k=>v ...])` reconstruction would
+    # then drop element typing entirely (which JET flags as a no-matching-method
+    # on the inner constructor).
+    vals = map(v -> v isa AbstractVector ? reshape(v, 1, :) : v, values(comps_data))
+    comps_data = NamedTuple{keys(comps_data)}(vals)
     return NamedTrajectory(comps_data; kwargs...)
 end
 
