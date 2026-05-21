@@ -11,6 +11,7 @@ jobs:
     name: Julia nightly - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
+    continue-on-error: true
     permissions:
       actions: write
       contents: read
