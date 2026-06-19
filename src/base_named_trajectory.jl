@@ -87,7 +87,7 @@ end
 """
 function StructKnotPoint.KnotPoint(Z::NamedTrajectory, k::Int)
     @assert 1 ≤ k ≤ Z.N
-    timestep = Z[Z.timestep][k]
+    timestep = _scalar_getindex(Z[Z.timestep], k)
     return KnotPoint(
         k,
         view(Z.data, :, k),
@@ -96,6 +96,15 @@ function StructKnotPoint.KnotPoint(Z::NamedTrajectory, k::Int)
         Z.names,
         Z.control_names,
     )
+end
+
+# GPU-safe scalar extraction. On CPU arrays, direct indexing is fine.
+# On GPU arrays (CuVector, etc.), scalar indexing is disallowed by default;
+# download one element via Array(view(...)) instead.
+_scalar_getindex(A::Array, k::Int) = @inbounds A[k]
+_scalar_getindex(A::SubArray{<:Any,<:Any,<:Array}, k::Int) = @inbounds A[k]
+function _scalar_getindex(A::AbstractArray, k::Int)
+    return Array(view(A, k:k))[1]
 end
 
 """
