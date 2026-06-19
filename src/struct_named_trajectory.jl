@@ -263,13 +263,11 @@ function NamedTrajectory(
     @assert length(datavec) == sum(length.(values(components)), init = 0) * N "Data vector length does not match components * N"
     @assert length(global_data) == sum(length.(values(global_components)), init = 0) "Global data length does not match global components"
 
-    # Only collect lazy arrays and other non-strided AbstractVectors
-    # Vector, SubArray, and other strided arrays can be used directly without copying
-    datavec_concrete =
-        (datavec isa Vector || datavec isa SubArray) ? datavec : collect(datavec)
-    global_data_concrete =
-        (global_data isa Vector || global_data isa SubArray) ? global_data :
-        collect(global_data)
+    # Only collect lazy/non-array AbstractVectors (e.g. generators, iterators).
+    # Concrete array types — Vector, SubArray, GPU arrays (CuVector, JLArray) —
+    # are used directly without copying.
+    datavec_concrete = datavec isa AbstractArray ? datavec : collect(datavec)
+    global_data_concrete = global_data isa AbstractArray ? global_data : collect(global_data)
 
     return NamedTrajectory(
         datavec_concrete,
