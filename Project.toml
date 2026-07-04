@@ -23,7 +23,7 @@ PlottingExt = ["LaTeXStrings", "Makie"]
 [compat]
 Aqua = "0.8"
 CairoMakie = "0.12, 0.13, 0.14, 0.15"
-DataInterpolations = "8.1"
+DataInterpolations = "8.1, 9.0"
 JET = "0.9, 0.10, 0.11"
 JLD2 = "0.6"
 LaTeXStrings = "1"
