@@ -1,6 +1,7 @@
 module MethodsNamedTrajectory
 
 export get_components
+export get_global_components
 export get_component_name
 export get_component_names
 
@@ -53,6 +54,13 @@ function get_components(cnames::Union{Tuple,AbstractVector}, traj::NamedTrajecto
 end
 
 get_components(traj::NamedTrajectory) = get_components(traj.names, traj)
+
+"""
+    get_global_components(::NamedTrajectory)
+
+Returns a NamedTuple containing the names and corresponding values of the global variables of the trajectory.
+"""
+get_global_components(traj::NamedTrajectory) = get_components(traj.global_names, traj)
 
 function filter_by_value(f::Function, nt::NamedTuple)
     return (; (k => v for (k, v) in pairs(nt) if f(v))...)
