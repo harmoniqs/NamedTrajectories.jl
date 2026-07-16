@@ -1,6 +1,7 @@
 module MethodsNamedTrajectory
 
 export get_components
+export get_globals
 export get_component_name
 export get_component_names
 
@@ -53,6 +54,22 @@ function get_components(cnames::Union{Tuple,AbstractVector}, traj::NamedTrajecto
 end
 
 get_components(traj::NamedTrajectory) = get_components(traj.names, traj)
+
+"""
+    get_globals(traj::NamedTrajectory)
+
+Returns a NamedTuple mapping each global name to its value in `traj`.
+
+Global components are time-invariant parameters stored separately from the
+per-knot-point trajectory data (in `traj.global_data`), so they are not returned by
+[`get_components`](@ref). Values are returned as views into `traj.global_data`, and a
+dimension-one global comes back as a length-one vector (not a scalar). Returns an empty
+NamedTuple if `traj` has no globals.
+"""
+function get_globals(traj::NamedTrajectory)
+    vals = [traj[n] for n ∈ traj.global_names]
+    return NamedTuple{traj.global_names}(vals)
+end
 
 function filter_by_value(f::Function, nt::NamedTuple)
     return (; (k => v for (k, v) in pairs(nt) if f(v))...)
@@ -1084,6 +1101,61 @@ end
     traj4 = add_component(traj, :g, dg; type = :global)
     @test traj4.data == data
     @test traj4.global_data == dg
+end
+
+@testitem "get_globals" begin
+    using Random
+    N = 10
+    data = randn(5, N)
+
+    # happy path: multiple globals with mixed dimensions
+    traj = NamedTrajectory(
+        data,
+        (x = 1:3, y = 4:4, z = 5:5),
+        timestep = :z,
+        global_data = [1.0, 2.0, 3.0],
+        global_components = (a = 1:2, b = 3:3),
+    )
+    gs = get_globals(traj)
+    @test gs isa NamedTuple
+    @test keys(gs) == (:a, :b)
+    @test gs.a == [1.0, 2.0]
+    # dim-1 global comes back as a length-1 vector, not a scalar
+    @test gs.b == [3.0]
+    @test gs.a == traj.global_data[traj.global_components.a]
+    @test gs.b == traj.global_data[traj.global_components.b]
+    # concatenating the values reproduces the flat global_data
+    @test reduce(vcat, values(gs)) == traj.global_data
+
+    # values are views into global_data (consistent with get_components):
+    # writing through a returned value is visible in the trajectory
+    gs.a .= [10.0, 20.0]
+    @test traj.global_data[traj.global_components.a] == [10.0, 20.0]
+
+    # ordering follows global_components ranges, not the raw layout of global_data
+    traj_perm = NamedTrajectory(
+        data,
+        (x = 1:3, y = 4:4, z = 5:5),
+        timestep = :z,
+        global_data = [10.0, 20.0, 30.0],
+        global_components = (a = 2:3, b = 1:1),
+    )
+    @test get_globals(traj_perm) == (a = [20.0, 30.0], b = [10.0])
+
+    # empty path: a trajectory with no globals returns an empty NamedTuple
+    traj_none = NamedTrajectory(data, (x = 1:3, y = 4:4, z = 5:5), timestep = :z)
+    @test get_globals(traj_none) == NamedTuple()
+    @test isempty(get_globals(traj_none))
+
+    # single global
+    traj_one = NamedTrajectory(
+        data,
+        (x = 1:3, y = 4:4, z = 5:5),
+        timestep = :z,
+        global_data = [7.0],
+        global_components = (g = 1:1,),
+    )
+    @test get_globals(traj_one) == (g = [7.0],)
 end
 
 @testitem "remove component" begin
