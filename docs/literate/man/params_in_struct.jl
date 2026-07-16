@@ -20,3 +20,6 @@ params = (α = rand(1), β = rand(1))
 
 # we can now create a `NamedTrajectory` object with parameters specification.
 traj = NamedTrajectory(components, params; timestep = timestep, controls = control)
+
+# the global parameters can be recovered as a NamedTuple with `get_globals`.
+get_globals(traj)
