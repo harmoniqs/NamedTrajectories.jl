@@ -77,7 +77,7 @@ end
     x_new = rand(size(x_orig)...)
     u_new = rand(size(u_orig)...)
 
-    idx = rand(1:traj.N)
+    idx = rand(1:traj.K)
 
     traj[idx].x = deepcopy(x_new[:, idx])
     @test traj.x[:, idx] ==

@@ -15,21 +15,21 @@ function Base.show(io::IO, Z::NamedTrajectory)
 
     comp_str = join([format(n, Z.components[n]) for n in keys(Z.components)], ", ")
     if isempty(Z.global_data)
-        print(io, "N = ", Z.N, ", (", comp_str, ")")
+        print(io, "K = ", Z.K, ", (", comp_str, ")")
     else
         global_comp_str = join(
             [format(n, Z.global_components[n]) for n in keys(Z.global_components)],
             ", ",
         )
-        print(io, "N = ", Z.N, ", (", comp_str, "), (", global_comp_str, ")")
+        print(io, "K = ", Z.K, ", (", comp_str, "), (", global_comp_str, ")")
     end
 end
 
 """
-    length(Z::NamedTrajectory) = Z.dim * Z.N + Z.global_dim
+    length(Z::NamedTrajectory) = Z.dim * Z.K + Z.global_dim
 """
 function Base.length(Z::NamedTrajectory)
-    return Z.dim * Z.N + Z.global_dim
+    return Z.dim * Z.K + Z.global_dim
 end
 
 """
@@ -42,9 +42,9 @@ function Base.vec(Z::NamedTrajectory)
 end
 
 """
-    size(Z::NamedTrajectory) = (dim = Z.dim, N = Z.N, global_dim = Z.global_dim)
+    size(Z::NamedTrajectory) = (dim = Z.dim, K = Z.K, global_dim = Z.global_dim)
 """
-Base.size(Z::NamedTrajectory) = (dim = Z.dim, N = Z.N, global_dim = Z.global_dim)
+Base.size(Z::NamedTrajectory) = (dim = Z.dim, K = Z.K, global_dim = Z.global_dim)
 
 """
     copy(::NamedTrajectory)
@@ -54,7 +54,7 @@ Returns a shallow copy of the trajectory.
 function Base.copy(traj::NamedTrajectory)
     NamedTrajectory(
         traj.datavec,
-        traj.N,
+        traj.K,
         traj.timestep,
         traj.dim,
         traj.dims,
@@ -86,7 +86,7 @@ end
     - `k::Int`: The timestep of the KnotPoint.
 """
 function StructKnotPoint.KnotPoint(Z::NamedTrajectory, k::Int)
-    @assert 1 ≤ k ≤ Z.N
+    @assert 1 ≤ k ≤ Z.K
     timestep = Z[Z.timestep][k]
     return KnotPoint(
         k,
@@ -119,7 +119,7 @@ end
 
 Returns the final time index of the trajectory.
 """
-Base.lastindex(traj::NamedTrajectory) = traj.N
+Base.lastindex(traj::NamedTrajectory) = traj.K
 
 """
     getindex(traj, symb::Symbol)
@@ -135,7 +135,7 @@ Returns the component of the trajectory with name `symb` (as a view) or the prop
 """
 function Base.getproperty(traj::NamedTrajectory, symb::Symbol)
     if symb == :data
-        return reshape(view(traj.datavec, :), :, traj.N)
+        return reshape(view(traj.datavec, :), :, traj.K)
     elseif symb ∈ fieldnames(NamedTrajectory)
         return getfield(traj, symb)
     elseif symb in traj.names
@@ -217,14 +217,14 @@ Base.:*(traj::NamedTrajectory, α::Float64) = α * NamedTrajectory(traj)
 function Base.:+(traj1::NamedTrajectory, traj2::NamedTrajectory)
     @assert traj1.names == traj2.names
     @assert traj1.dim == traj2.dim
-    @assert traj1.N == traj2.N
+    @assert traj1.K == traj2.K
     return NamedTrajectory(traj1, datavec = traj1.datavec + traj2.datavec)
 end
 
 function Base.:-(traj1::NamedTrajectory, traj2::NamedTrajectory)
     @assert traj1.names == traj2.names
     @assert traj1.dim == traj2.dim
-    @assert traj1.N == traj2.N
+    @assert traj1.K == traj2.K
     return NamedTrajectory(traj1, datavec = traj1.datavec - traj2.datavec)
 end
 
@@ -342,7 +342,7 @@ end
     @test vec(traj) == vcat(traj.datavec, traj.global_data)
 end
 
-@testitem "size returns (dim, N, global_dim)" begin
+@testitem "size returns (dim, K, global_dim)" begin
     traj = NamedTrajectory(
         randn(5, 10),
         (x = 1:3, y = 4:4, z = 5:5);
@@ -352,14 +352,14 @@ end
     )
     sz = size(traj)
     @test sz.dim == 5
-    @test sz.N == 10
+    @test sz.K == 10
     @test sz.global_dim == 3
 end
 
 @testitem "show prints components and global components" begin
     traj_no_global = NamedTrajectory(randn(3, 4), (x = 1:2, z = 3:3); timestep = :z)
     str_no_global = sprint(show, traj_no_global)
-    @test occursin("N = 4", str_no_global)
+    @test occursin("K = 4", str_no_global)
     @test occursin("→ z", str_no_global)
     @test occursin("x", str_no_global)
     @test !occursin("),  (", str_no_global)
@@ -372,7 +372,7 @@ end
         global_components = (g = 1:2,),
     )
     str_global = sprint(show, traj_global)
-    @test occursin("N = 4", str_global)
+    @test occursin("K = 4", str_global)
     @test occursin("g = 1:2", str_global)
 end
 

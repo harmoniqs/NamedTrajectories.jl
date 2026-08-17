@@ -22,7 +22,7 @@ function Makie.convert_arguments(
     P::Makie.PointBased,
     traj::NamedTrajectory,
     comp::Int;
-    indices::AbstractVector{Int} = 1:traj.N,
+    indices::AbstractVector{Int} = 1:traj.K,
 )
     times = get_times(traj)[indices]
     positions = map(zip(indices, times)) do (i, t)
@@ -40,7 +40,7 @@ function Makie.convert_arguments(
     traj::NamedTrajectory,
     name::Symbol;
     transform::Union{Nothing,AbstractTransform} = nothing,
-    indices::AbstractVector{Int} = 1:traj.N,
+    indices::AbstractVector{Int} = 1:traj.K,
 )
     if !isnothing(transform)
         transform_data = try
