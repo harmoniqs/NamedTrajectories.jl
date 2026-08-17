@@ -83,7 +83,7 @@ end
 
     # Arguments
     - `Z::NamedTrajectory`: The trajectory from which the KnotPoint is taken.
-    - `k::Int`: The timestep of the KnotPoint.
+    - `k::Int`: The index of the knot point.
 """
 function StructKnotPoint.KnotPoint(Z::NamedTrajectory, k::Int)
     @assert 1 ≤ k ≤ Z.N
@@ -101,7 +101,7 @@ end
 """
     getindex(traj, k::Int)::KnotPoint
 
-Returns the knot point at time `k`.
+Returns the knot point at index `k`.
 """
 Base.getindex(traj::NamedTrajectory, k::Int) = KnotPoint(traj, k)
 
