@@ -339,7 +339,7 @@ end
 
 Update a component of the trajectory.
 """
-function update!(traj::NamedTrajectory, name::Symbol, data::AbstractMatrix{Float64})
+function update!(traj::NamedTrajectory, name::Symbol, data::AbstractMatrix{<:Real})
     @assert name ∈ traj.names
     @assert size(data, 1) == traj.dims[name]
     @assert size(data, 2) == traj.N
@@ -355,7 +355,7 @@ Update the trajectory with a new datavec.
 Keyword arguments:
     - `type::Symbol`: The type of the datavec, can be `:data`, `:global`, or `:both`. Default is `global`.
 """
-function update!(traj::NamedTrajectory, datavec::AbstractVector{Float64}; type = :data)
+function update!(traj::NamedTrajectory, datavec::AbstractVector{<:Real}; type = :data)
     if type == :data
         traj.datavec[:] = datavec
     elseif type == :global
@@ -906,6 +906,27 @@ end
     @test :ddu in traj_with_ddu.control_names
 end
 
+@testitem "update! accepts non-Float64 Real data (eltype widening)" begin
+    using NamedTrajectories
+
+    traj = NamedTrajectory(
+        (x = randn(3, 10), u = randn(1, 10), Δt = fill(0.1, 1, 10));
+        controls = (:u, :Δt),
+        timestep = :Δt,
+    )
+    # Float32 component update — converts to the trajectory's Float64 storage
+    update!(traj, :u, Float32.(zeros(1, 10)))
+    @test traj[:u] == zeros(1, 10)
+
+    # Int component update
+    update!(traj, :x, zeros(Int, 3, 10))
+    @test traj[:x] == zeros(3, 10)
+
+    # Float32 datavec update
+    update!(traj, Float32.(collect(traj.datavec)); type = :data)
+    @test traj.datavec == traj.datavec  # round-trips through conversion
+end
+
 @testitem "add_control_derivatives with bounds" begin
     T = 10
     n_drives = 2
@@ -1420,3 +1441,4 @@ end
 end
 
 end
+
