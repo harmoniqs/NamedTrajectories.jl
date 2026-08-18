@@ -4,7 +4,7 @@
 
 using NamedTrajectories
 
-## define number of timesteps and timestep
+## define number of knot points and timestep
 N = 10
 dt = 0.1
 

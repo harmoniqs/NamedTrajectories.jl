@@ -426,7 +426,7 @@ end
 end
 
 @testitem "Construct from component data" begin
-    # define number of timesteps and timestep
+    # define number of knot points and timestep
     N = 10
     dt = 0.1
 
