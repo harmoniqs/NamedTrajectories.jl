@@ -116,11 +116,7 @@ end
 Returns the times of a trajectory as a vector.
 """
 function get_times(traj::NamedTrajectory)
-    if traj.timestep isa Symbol
-        return cumsum([0.0, vec(traj[traj.timestep])[1:(end-1)]...])
-    else
-        return [0:(traj.N-1)...] * traj.timestep
-    end
+    return cumsum([0.0, vec(traj[traj.timestep])[1:(end-1)]...])
 end
 
 """
@@ -129,11 +125,7 @@ end
 Returns the timesteps of a trajectory as a vector.
 """
 function get_timesteps(traj::NamedTrajectory)
-    if traj.timestep isa Symbol
-        return vec(traj[traj.timestep])
-    else
-        return fill(traj.timestep, traj.N)
-    end
+    return vec(traj[traj.timestep])
 end
 
 """
@@ -414,13 +406,7 @@ function Base.merge(
 
     # organize names to drop by trajectory index
     drop_names = map(eachindex(trajs)) do index
-        if index < 1 || index > length(trajs)
-            throw(BoundsError(trajs, index))
-        end
-        vcat(
-            Symbol[name for (name, keep) ∈ pairs(merge_names) if keep != index],
-            exclude_names,
-        )
+        vcat(Symbol[name for (name, keep) ∈ pairs(merge_names) if keep != index], exclude_names)
     end
 
     # collect component data
@@ -669,10 +655,6 @@ function get_suffix(
     global_components = get_components(gcomponent_names, traj)
     if remove
         global_components = remove_suffix(global_components, suffix; exclude = exclude)
-    end
-
-    if isempty(component_names)
-        error("No components found with suffix '$suffix'")
     end
 
     return NamedTrajectory(
@@ -1438,6 +1420,89 @@ end
 
     # Suffix-not-present error path
     @test_throws ArgumentError remove_suffix("hello", "_world")
+end
+
+@testitem "coverage: add_components control branch + invalid type throw" begin
+    using NamedTrajectories
+
+    traj = NamedTrajectory(
+        (x = randn(3, 5), u = randn(1, 5), Δt = fill(0.1, 1, 5));
+        controls = (:u, :Δt),
+        timestep = :Δt,
+    )
+    traj2 = add_components(traj, (v = randn(2, 5),); type = :control)
+    @test :v ∈ traj2.control_names
+
+    @test_throws ArgumentError add_components(traj, (w = randn(2, 5),); type = :nonsense)
+end
+
+@testitem "coverage: remove_components new_timestep / new_controls paths" begin
+    using NamedTrajectories
+
+    # new_timestep must name a SURVIVING component: give the trajectory a
+    # second time-like component, remove :Δt, and promote it.
+    traj = NamedTrajectory(
+        (x = randn(3, 5), u = randn(1, 5), Δt = fill(0.1, 1, 5), dt2 = fill(0.1, 1, 5));
+        controls = (:u, :Δt, :dt2),
+        timestep = :Δt,
+    )
+    traj_s = remove_components(traj, [:Δt]; new_timestep = :dt2)
+    @test traj_s.timestep == :dt2
+
+    # new_controls paths: remove a non-timestep component, declare new controls
+    traj2 = NamedTrajectory(
+        (x = randn(3, 5), y = randn(2, 5), u = randn(1, 5), Δt = fill(0.1, 1, 5));
+        controls = (:u, :Δt),
+        timestep = :Δt,
+    )
+    # new_controls must name SURVIVING components (re-declaring states as controls)
+    traj_c = remove_components(traj2, [:y]; new_controls = :x)
+    @test :x ∈ traj_c.control_names
+
+    traj_t = remove_components(traj2, [:y]; new_controls = (:x, :u))
+    @test :x ∈ traj_t.control_names && :u ∈ traj_t.control_names
+end
+
+@testitem "coverage: drop(::NamedTuple, ::Symbol)" begin
+    using NamedTrajectories
+    import NamedTrajectories.MethodsNamedTrajectory: drop
+
+    nt = (a = 1, b = 2, c = 3)
+    @test drop(nt, :b) == (a = 1, c = 3)
+end
+
+
+@testitem "coverage: add_control_derivatives carries global components" begin
+    using NamedTrajectories
+
+    traj = NamedTrajectory(
+        (x = randn(3, 5), u = randn(1, 5), Δt = fill(0.1, 1, 5));
+        controls = (:u, :Δt),
+        timestep = :Δt,
+        global_components = (θ = 1:2,),
+        global_data = randn(2),
+        initial = (x = zeros(3),),
+    )
+    traj_d = add_control_derivatives(traj, 1; control_name = :u)
+    @test haskey(traj_d.components, :du)
+    @test haskey(traj_d.global_components, :θ)
+    @test traj_d.global_components.θ == 1:2
+end
+
+@testitem "coverage: bound validation error branches" begin
+    using NamedTrajectories
+
+    mk(; bounds) = NamedTrajectory(
+        (x = randn(3, 5), Δt = fill(0.1, 1, 5));
+        controls = :Δt,
+        timestep = :Δt,
+        bounds = bounds,
+    )
+    @test_throws ArgumentError mk(bounds = (x = randn(2),))
+    @test_throws ArgumentError mk(bounds = (x = (randn(2), randn(3)),))
+    @test_throws ArgumentError mk(bounds = (x = (randn(3), randn(2)),))
+    # non-bound payload type hits the descriptive ArgumentError, not a TypeError
+    @test_throws ArgumentError mk(bounds = (x = "not a bound",))
 end
 
 end
