@@ -315,10 +315,13 @@ function get_bounds_from_dims(
     dims::NamedTuple{<:Any,<:DimType};
     dtype = Float64,
 )
-    bounds_dict = OrderedDict{Symbol,AbstractBound}(pairs(bounds))
+    # NOTE: deliberately untyped values — a non-bound payload flows to the
+    # else-branch and raises a descriptive ArgumentError instead of a bare
+    # TypeError from dict conversion.
+    bounds_dict = OrderedDict{Symbol,Any}(pairs(bounds))
     for (name, bound) ∈ bounds_dict
-        @assert bound isa AbstractBound
-
+        # no `@assert` here: non-bound payloads fall through to the else-branch,
+        # which raises a descriptive ArgumentError (asserts compile away).
         bdim = dims[name]
         if bound isa Real
             vbound = fill(convert(dtype, bound), bdim)
@@ -426,7 +429,7 @@ end
 end
 
 @testitem "Construct from component data" begin
-    # define number of timesteps and timestep
+    # define number of knot points and timestep
     N = 10
     dt = 0.1
 

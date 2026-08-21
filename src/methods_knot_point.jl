@@ -47,7 +47,16 @@ function Base.setproperty!(slice::KnotPoint, symb::Symbol, val::Any)
     end
 end
 
-function Base.setindex!(slice::KnotPoint, symb::Symbol, val::Any)
+"""
+    setindex!(slice::KnotPoint, val, symb::Symbol)
+
+Support `kp[:name] = val` syntax — dispatched to `setproperty!` (and thereby
+`update!`). Note the argument order: Base's `setindex!` convention is
+`setindex!(collection, value, key)`; the previous signature had `symb` and
+`val` transposed, so the method could never match the `kp[symb] = val`
+lowering and was effectively dead.
+"""
+function Base.setindex!(slice::KnotPoint, val::Any, symb::Symbol)
     setproperty!(slice, symb, val)
 end
 
@@ -122,6 +131,22 @@ end
     kp = traj[2]
     # KnotPoint is immutable; assigning to a struct field must error.
     @test_throws ErrorException kp.components = kp.components
+end
+
+@testitem "coverage: KnotPoint setindex!" begin
+    using NamedTrajectories
+
+    traj = NamedTrajectory(
+        (x = randn(3, 5), u = randn(1, 5), Δt = fill(0.1, 1, 5));
+        controls = (:u, :Δt),
+        timestep = :Δt,
+    )
+    kp = KnotPoint(traj, 2)
+    @test kp.x == traj.x[:, 2]
+    kp[:u] = zeros(1)
+    @test kp.u == zeros(1)
+    # the setproperty! error path: struct fields are not settable
+    @test_throws ErrorException kp.k = 3
 end
 
 end
