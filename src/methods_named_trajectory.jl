@@ -319,6 +319,7 @@ function remove_components(
         initial = NamedTuple(k => v for (k, v) in pairs(traj.initial) if k ∉ names),
         final = NamedTuple(k => v for (k, v) in pairs(traj.final) if k ∉ names),
         goal = NamedTuple(k => v for (k, v) in pairs(traj.goal) if k ∉ names),
+        warp = traj.warp,
     )
 end
 
@@ -345,9 +346,22 @@ end
 Update the trajectory with a new datavec.
 
 Keyword arguments:
-    - `type::Symbol`: The type of the datavec, can be `:data`, `:global`, or `:both`. Default is `global`.
+    - `type::Symbol`: The type of the datavec, can be `:data`, `:global`, or `:both`. Default is global.
+
+Under a time warp the packed vector (the layout of `vec(traj)`) must go through
+`unpack!` instead — the derived timestep rows are never decision data — so `update!`
+with `type = :data` or `:both` throws `ArgumentError`; `type = :global` still works.
 """
 function update!(traj::NamedTrajectory, datavec::AbstractVector{<:Real}; type = :data)
+    if traj.warp !== nothing && type != :global
+        throw(
+            ArgumentError(
+                "update! with a packed vector is not supported under a warp — " *
+                "the timestep rows are derived, never decision data. " *
+                "Use unpack!(traj, z) with the packed layout of vec(traj).",
+            ),
+        )
+    end
     if type == :data
         traj.datavec[:] = datavec
     elseif type == :global
@@ -389,6 +403,9 @@ Merge names are used to specify which components to merge by index. If no merge 
 # Keyword Arguments
 - `timestep::Symbol`: The timestep symbol to use for free time problems. Default to the last trajectory.
 - `merge_names::Union{Nothing, NamedTuple{<:Any, <:Tuple{Vararg{Int}}}}=nothing`: The names to merge by index.
+
+Trajectories carrying a time warp cannot be merged (the warp is structural to its
+trajectory); merging them throws `ArgumentError`.
 """
 function Base.merge(traj1::NamedTrajectory, traj2::NamedTrajectory; kwargs...)
     return merge([traj1, traj2]; kwargs...)
@@ -402,6 +419,15 @@ function Base.merge(
 )
     if length(trajs) < 2
         throw(ArgumentError("At least two trajectories must be provided"))
+    end
+
+    # a warp is structural to its trajectory — merging is out of scope for v1
+    for (i, t) in enumerate(trajs)
+        t.warp === nothing || throw(
+            ArgumentError(
+                "merging trajectories with a warp is not supported (trajectory $i has a warp)",
+            ),
+        )
     end
 
     # organize names to drop by trajectory index
@@ -561,6 +587,7 @@ function add_suffix(traj::NamedTrajectory, suffix::String)
         initial = add_suffix(traj.initial, suffix),
         final = add_suffix(traj.final, suffix),
         goal = add_suffix(traj.goal, suffix),
+        warp = traj.warp,
     )
 end
 
@@ -665,6 +692,7 @@ function get_suffix(
         initial = get_suffix(traj.initial, suffix, remove = remove),
         final = get_suffix(traj.final, suffix, remove = remove),
         goal = get_suffix(traj.goal, suffix, remove = remove),
+        warp = traj.warp,
     )
 end
 
@@ -843,6 +871,7 @@ function add_control_derivatives(
         initial = new_initial,
         final = new_final,
         goal = traj.goal,
+        warp = traj.warp,
     )
 end
 
@@ -1503,6 +1532,115 @@ end
     @test_throws ArgumentError mk(bounds = (x = (randn(3), randn(2)),))
     # non-bound payload type hits the descriptive ArgumentError, not a TypeError
     @test_throws ArgumentError mk(bounds = (x = "not a bound",))
+end
+
+# =========================================================================== #
+#                      Derived timesteps — method surface                     #
+# =========================================================================== #
+
+@testitem "get_times and get_duration stay consistent with the warp" begin
+    using NamedTrajectories
+
+    N = 10
+    w = GlobalScale(5.0)
+    traj = NamedTrajectory(
+        (x = randn(3, N), u = randn(2, N), Δt = fill(0.1, 1, N));
+        controls = :u,
+        warp = w,
+    )
+
+    @test get_times(traj) ≈ knot_times(w, N)
+    @test get_duration(traj) ≈ duration(w)
+    @test get_timesteps(traj) == vec(traj.Δt)
+
+    # a perturbed-T unpack moves the Δt rows and get_times coherently
+    z2 = copy(vec(traj))
+    z2[end] = 7.5
+    unpack!(traj, z2)
+    @test traj.Δt == reshape(deltats_row(GlobalScale(7.5), N), 1, N)
+    @test get_times(traj) ≈ knot_times(GlobalScale(7.5), N)
+    @test get_duration(traj) ≈ 7.5
+end
+
+@testitem "update! with a packed vector throws under a warp" begin
+    using NamedTrajectories
+
+    traj = NamedTrajectory(
+        (x = randn(3, 5), u = randn(2, 5), Δt = fill(0.1, 1, 5));
+        controls = :u,
+        warp = GlobalScale(5.0),
+        global_data = [1.0, 2.0],
+        global_components = (g = 1:2,),
+    )
+
+    # packed vectors go through unpack!, not update!
+    @test_throws ArgumentError update!(traj, vec(traj))
+    @test_throws ArgumentError update!(traj, randn(length(traj) - 2); type = :both)
+
+    # globals are untouched by the warp: update!(type = :global) still works
+    update!(traj, [7.0, 8.0]; type = :global)
+    @test traj.global_data == [7.0, 8.0]
+end
+
+@testitem "add_control_derivatives preserves the warp" begin
+    using NamedTrajectories
+
+    N = 10
+    w = GlobalScale(5.0)
+    traj = NamedTrajectory(
+        (x = randn(3, N), u = randn(2, N), Δt = fill(0.1, 1, N));
+        controls = :u,
+        warp = w,
+    )
+
+    traj_d = add_control_derivatives(traj, 1; control_name = :u)
+    @test traj_d.warp === traj.warp
+    @test :du ∈ traj_d.control_names
+    @test traj_d.Δt == reshape(deltats_row(w, N), 1, N)
+    @test length(traj_d) == (traj_d.dim - 1) * N + n_params(w)
+    @test get_times(traj_d) ≈ knot_times(w, N)
+end
+
+@testitem "merge rejects warped trajectories" begin
+    using NamedTrajectories
+
+    N = 5
+    plain = NamedTrajectory(randn(5, N), (x = 1:3, y = 4:4, z = 5:5); timestep = :z)
+    warped = NamedTrajectory(
+        (x = randn(3, N), u = randn(2, N), Δt = fill(0.1, 1, N));
+        controls = :u,
+        warp = GlobalScale(5.0),
+    )
+    @test_throws ArgumentError merge([plain, warped])
+    @test_throws ArgumentError merge([warped, plain])
+end
+
+@testitem "component and suffix operations preserve the warp" begin
+    using NamedTrajectories
+
+    N = 10
+    w = GlobalScale(5.0)
+    traj = NamedTrajectory(
+        (x = randn(3, N), u = randn(2, N), Δt = fill(0.1, 1, N));
+        controls = :u,
+        warp = w,
+    )
+
+    # add / remove component
+    traj_y = add_component(traj, :y, randn(N))
+    @test traj_y.warp === traj.warp
+    @test get_times(traj_y) ≈ knot_times(w, N)
+    traj_rm = remove_component(traj_y, :y)
+    @test traj_rm.warp === traj.warp
+
+    # algebraic methods
+    @test (2.0 * traj).warp === traj.warp
+
+    # suffix
+    traj_s = add_suffix(traj, "_1")
+    @test traj_s.warp === traj.warp
+    @test traj_s.timestep == :Δt_1
+    @test get_times(traj_s) ≈ knot_times(w, N)
 end
 
 end

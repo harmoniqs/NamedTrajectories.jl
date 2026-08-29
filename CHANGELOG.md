@@ -4,6 +4,24 @@ All notable changes to NamedTrajectories.jl are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the package
 follows Julia 0.x SemVer.
 
+## [Unreleased]
+
+### Added
+
+- **Derived timestep rows via an optional time warp (#160).** `NamedTrajectory`
+  gains a `warp` keyword (`AbstractTimeWarp`, new public API in `time_warp.jl`:
+  `GlobalScale`, `PiecewiseLinearWarp`, `deltats`, `deltats_row`, `knot_times`,
+  `duration`, `is_monotone`, `warp_params`, `n_params`, `with_params`,
+  `ddeltats_dparams`). Under a warp the timestep rows are derived —
+  `Δtₖ = T·wₖ` with exact rational lattice weights — present as components
+  (`get_times`, plotting, rollouts unchanged) but excluded from the packed
+  decision vector: `vec(traj)` / `length(traj)` drop them and append the trailing
+  warp parameters, and the new `unpack!(traj, z)` writes non-derived components
+  only, rebuilds the warp via `with_params`, then `sync_timesteps!` re-derives
+  the rows (single writer). Exclusion is by component role (`get_derived_names`),
+  never by name. `warp = nothing` (the default) is behavior-identical to the
+  historical accounting; merging warped trajectories throws.
+
 ## [0.9.3] — 2026-08-20
 
 ### Fixed
