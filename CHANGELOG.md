@@ -4,7 +4,7 @@ All notable changes to NamedTrajectories.jl are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the package
 follows Julia 0.x SemVer.
 
-## [Unreleased]
+## [0.9.4]
 
 ### Added
 
