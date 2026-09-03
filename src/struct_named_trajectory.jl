@@ -5,6 +5,8 @@ export NamedTrajectory
 using OrderedCollections
 using TestItems
 
+using ..TimeWarp: AbstractTimeWarp, deltats_row, is_monotone
+
 # ---------------------------------------------------------------------------- #
 # Types for NamedTrajectory
 # ---------------------------------------------------------------------------- #
@@ -80,6 +82,10 @@ mutable struct NamedTrajectory{
     global_dims::NamedTuple{GDNames,GDTypes}
     global_components::NamedTuple{GCNames,GCTypes}
     global_names::GN
+    # Optional time warp. When `warp !== nothing` the timestep component is DERIVED:
+    # present as rows (every consumer keeps working) but excluded from the packed
+    # decision vector, and rewritten from `(warp, N)` by `sync_timesteps!`.
+    warp::Union{Nothing,AbstractTimeWarp}
 end
 
 """
@@ -99,6 +105,7 @@ function NamedTrajectory(
     goal = NamedTuple(),
     global_data::AbstractVector{R} = R[],
     global_components::NamedTuple{GN,<:ComponentType} where {GN} = NamedTuple(),
+    warp::Union{Nothing,AbstractTimeWarp} = nothing,
 ) where {R<:Real}
     @assert :data ∉ keys(comps) "data is a reserved name"
     @assert isdisjoint(keys(comps), keys(global_components)) "components and global components should use unique names"
@@ -121,6 +128,25 @@ function NamedTrajectory(
     dims = NamedTuple(dims_pairs)
     dim = sum(values(dims), init = 0)
     @assert dim * N == length(datavec) "Data vector length does not match components"
+
+    # derived timesteps: under a warp the timestep rows are rewritten from
+    # (warp, N) — passed-in timestep values are ignored. Own the buffer first
+    # so a caller-held datavec is never mutated.
+    if warp !== nothing
+        dims[timestep] == 1 || throw(
+            ArgumentError(
+                "a derived timestep row must be single-row (dims[:$timestep] = $(dims[timestep]))",
+            ),
+        )
+        is_monotone(warp, N) || throw(
+            ArgumentError(
+                "warp is not monotone on the $N-knot lattice — derived timesteps must be positive",
+            ),
+        )
+        datavec = Vector{R}(datavec)
+        data = reshape(datavec, dim, N)
+        data[comps[timestep], :] .= reshape(deltats_row(warp, N), 1, :)
+    end
 
     # process and save bounds
     bounds = get_bounds_from_dims(bounds, dims, dtype = R)
@@ -155,6 +181,7 @@ function NamedTrajectory(
         global_dims,
         global_components,
         global_names,
+        warp,
     )
 end
 
@@ -259,6 +286,7 @@ function NamedTrajectory(
     goal = traj.goal,
     global_data::AbstractVector{R} = traj.global_data,
     global_components::NamedTuple{GN,<:ComponentType} where {GN} = traj.global_components,
+    warp::Union{Nothing,AbstractTimeWarp} = traj.warp,
 ) where {R<:Real}
     @assert length(datavec) == sum(length.(values(components)), init = 0) * N "Data vector length does not match components * N"
     @assert length(global_data) == sum(length.(values(global_components)), init = 0) "Global data length does not match global components"
@@ -283,6 +311,7 @@ function NamedTrajectory(
         goal = goal,
         global_data = global_data_concrete,
         global_components = global_components,
+        warp = warp,
     )
 end
 
@@ -315,10 +344,13 @@ function get_bounds_from_dims(
     dims::NamedTuple{<:Any,<:DimType};
     dtype = Float64,
 )
-    bounds_dict = OrderedDict{Symbol,AbstractBound}(pairs(bounds))
+    # NOTE: deliberately untyped values — a non-bound payload flows to the
+    # else-branch and raises a descriptive ArgumentError instead of a bare
+    # TypeError from dict conversion.
+    bounds_dict = OrderedDict{Symbol,Any}(pairs(bounds))
     for (name, bound) ∈ bounds_dict
-        @assert bound isa AbstractBound
-
+        # no `@assert` here: non-bound payloads fall through to the else-branch,
+        # which raises a descriptive ArgumentError (asserts compile away).
         bdim = dims[name]
         if bound isa Real
             vbound = fill(convert(dtype, bound), bdim)
@@ -426,7 +458,7 @@ end
 end
 
 @testitem "Construct from component data" begin
-    # define number of timesteps and timestep
+    # define number of knot points and timestep
     N = 10
     dt = 0.1
 
@@ -528,6 +560,73 @@ end
     # Test 3: Values should match regardless of input type
     @test traj1.x == base_traj.x
     @test traj2.x == base_traj.x
+end
+
+@testitem "construct with a warp derives the timestep rows" begin
+    using NamedTrajectories
+
+    N = 10
+    w = GlobalScale(5.0)  # L = 9
+
+    # the passed timestep values are overwritten from the warp at construction
+    traj = NamedTrajectory(
+        (x = randn(3, N), u = randn(2, N), Δt = fill(0.1, 1, N));
+        controls = :u,
+        timestep = :Δt,
+        warp = w,
+    )
+    @test traj.Δt == reshape(deltats_row(w, N), 1, N)
+    @test [traj.datavec[first(traj.components.Δt)+(k-1)*traj.dim] for k = 1:N] == collect(deltats_row(w, N))
+
+    # roles unchanged: the derived row is still the timestep and still a control
+    @test traj.timestep == :Δt
+    @test :Δt ∈ traj.control_names
+    @test traj.names == (:x, :u, :Δt)
+    @test traj.dim == 6
+    @test traj.dims.Δt == 1
+
+    # non-Δt data untouched
+    @test traj.x == traj.data[traj.components.x, :]
+
+    # the show method marks the derived row
+    @test occursin("⇒ Δt", sprint(show, traj))
+
+    # the copy-constructor preserves the warp
+    @test NamedTrajectory(traj).warp === traj.warp
+end
+
+@testitem "warp construction validates monotonicity, row count, and type" begin
+    using NamedTrajectories
+
+    N = 10
+    data = (x = randn(3, N), u = randn(2, N), Δt = fill(0.1, 1, N))
+
+    # a warp must be monotone on the lattice — derived Δt must be positive
+    @test_throws ArgumentError NamedTrajectory(data; warp = GlobalScale(0.0))
+    @test_throws ArgumentError NamedTrajectory(data; warp = GlobalScale(-1.0))
+
+    # the derived timestep row must be single-row
+    @test_throws ArgumentError NamedTrajectory(
+        (x = randn(3, N), u = randn(2, N), Δt = fill(0.1, 2, N));
+        timestep = :Δt,
+        warp = GlobalScale(5.0),
+    )
+
+    # the lattice needs at least 2 knots
+    @test_throws ArgumentError NamedTrajectory(
+        (x = randn(3, 1), u = randn(2, 1), Δt = fill(0.1, 1, 1));
+        warp = GlobalScale(5.0),
+    )
+
+    # the warp must be an AbstractTimeWarp (typed keyword → TypeError)
+    @test_throws TypeError NamedTrajectory(data; warp = 5.0)
+end
+
+@testitem "explicit warp = nothing constructs identically to the default" begin
+    using NamedTrajectories
+
+    data = (x = randn(3, 5), u = randn(2, 5), Δt = fill(0.1, 1, 5))
+    @test NamedTrajectory(data; warp = nothing) == NamedTrajectory(data)
 end
 
 end
