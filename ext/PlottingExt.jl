@@ -116,7 +116,7 @@ function Makie.plot!(p::TrajectoryPlot)
         if isnothing(trans)
             K = init_data isa AbstractVector ? 1 : size(init_data, 1)
         elseif trans isa Vector
-            # Vector transform implies per-timestep transformation (zip with columns)
+            # Vector transform implies per-knot-point transformation (zip with columns)
             # Determine K from the output of the transform on the first column
             val = trans[1](init_data[:, 1])
             K = length(val)
