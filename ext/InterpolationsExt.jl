@@ -92,22 +92,22 @@ end
         kwargs...
     )
 
-Interpolate a `NamedTrajectory` to a new number of time steps.
+Interpolate a `NamedTrajectory` to a new number of knot points.
 
 # Arguments
 - `traj::NamedTrajectory`: The trajectory to interpolate.
-- `T::Int`: The number of time steps in the interpolated trajectory.
+- `T::Int`: The number of knot points in the interpolated trajectory.
 
 # Keyword Arguments
 - `kwargs...`: Additional keyword arguments passed to the main `trajectory_interpolation` method.
 
 # Returns
-- `NamedTrajectory`: A new trajectory with `T` time steps, evenly spaced between the original 
+- `NamedTrajectory`: A new trajectory with `T` knot points, evenly spaced between the original 
   start and end times.
 
 # Examples
 ```julia
-# Interpolate to 100 time steps
+# Interpolate to 100 knot points
 new_traj = trajectory_interpolation(traj, 100)
 
 # With custom interpolation methods
