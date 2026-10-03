@@ -27,7 +27,7 @@ where $x_k$ is the state and $u_k$ is the control at a time indexed by $k$. Toge
 Here we will create a `NamedTrajectory` with a variable timestep.
 =#
 
-## define the number of timesteps
+## define the number of knot points
 N = 10
 Δt = 0.1
 
@@ -51,7 +51,7 @@ traj.names
 In many settings we will want to specify the problem data of our `NamedTrajectory` -- e.g. bounds, initial values, final values, and goal values. 
 =#
 
-## define the number of timesteps
+## define the number of knot points
 N = 10
 
 ## define the knot point data as a NamedTuple of matrices

@@ -115,11 +115,27 @@ get_timesteps(traj)  # Vector of Δt values
 get_duration(traj)   # Total duration T
 ```
 
+## Derived Timesteps (time warp)
+
+With `NamedTrajectory(comps; warp = GlobalScale(T))` the timestep rows are
+**derived** — `Δtₖ = T·wₖ` on the normalized lattice — via the new `time_warp.jl`:
+
+- The `:Δt` rows stay PRESENT as components (`get_times`, plotting, rollouts keep
+  working) but are EXCLUDED from the packed decision vector.
+- `vec(traj)` = per-knot non-derived rows, then globals, then the trailing warp
+  params (`GlobalScale`: the scalar `T`). `length(traj)` matches.
+- `unpack!(traj, z)` is the packed write path: writes non-derived components only,
+  rebuilds the warp via `with_params`, then `sync_timesteps!` re-derives the rows
+  (the single writer). `update!` with a packed vector throws under a warp.
+- Exclusion is by ROLE (`get_derived_names`), not by name.
+- `warp = nothing` (default) is behavior-identical to the historical accounting.
+
 ## Module Organization
 
 ```
 NamedTrajectories.jl/src/
 ├── NamedTrajectories.jl        # Main module (reexports all)
+├── time_warp.jl                # AbstractTimeWarp, GlobalScale, PiecewiseLinearWarp
 ├── struct_named_trajectory.jl  # NamedTrajectory type definition
 ├── struct_knot_point.jl        # KnotPoint type definition
 ├── base_named_trajectory.jl    # Base methods (indexing, copy, show)
@@ -144,6 +160,7 @@ Run: `julia --project -e 'using Pkg; Pkg.test()'`
 ## Gotchas
 
 - **timestep is always a control** - Even if not specified, `timestep` symbol is added to `control_names`
+- **derived timesteps under a warp** - The timestep rows are rewritten from `(warp, N)` by `sync_timesteps!`; never write them by hand, never pack them into `vec(traj)`
 - **bounds expand scalars** - `bounds=(u = 1.0,)` becomes `bounds=(u = ([-1.0, -1.0], [1.0, 1.0]),)` for 2D u
 - **views not copies** - `traj.x` returns a view; modifications affect `datavec`
 - **global_data is separate** - Not part of `datavec`, concatenated lazily in `vec(traj)`
