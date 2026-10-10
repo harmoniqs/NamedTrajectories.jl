@@ -89,7 +89,7 @@ end
     @test_throws AssertionError load_traj("missing.txt")
 end
 
-@testitem "derivative: vector and Float64 timesteps agree on uniform grid" begin
+@testitem "derivative: vector and Float64 timestep values agree on uniform grid" begin
     X = [1.0 2.0 4.0 7.0 11.0; 0.0 1.0 4.0 9.0 16.0]
     Δt_vec = fill(0.5, size(X, 2))
     dX_vec = derivative(X, Δt_vec)
@@ -109,7 +109,7 @@ end
     @test dX_mat ≈ dX_vec
 end
 
-@testitem "integral: vector and Float64 timesteps agree on uniform grid" begin
+@testitem "integral: vector and Float64 timestep values agree on uniform grid" begin
     X = [1.0 2.0 3.0 4.0 5.0; 0.0 1.0 2.0 3.0 4.0]
     Δt_vec = fill(1.0, size(X, 2))
     ∫X = integral(X, Δt_vec)
