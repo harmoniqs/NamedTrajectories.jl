@@ -4,6 +4,9 @@ using Reexport
 
 @reexport using OrderedCollections: OrderedDict
 
+include("time_warp.jl")
+@reexport using .TimeWarp
+
 include("struct_named_trajectory.jl")
 @reexport using .StructNamedTrajectory
 
