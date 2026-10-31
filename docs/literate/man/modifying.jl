@@ -14,7 +14,7 @@ Other times, you may want to add or remove components from the trajectory.
 
 using NamedTrajectories
 
-# Create a random trajectory with 5 time steps, a state variable `x` of dimension 3, and a control variable `u` of dimension 2
+# Create a random trajectory with 5 knot points, a state variable `x` of dimension 3, and a control variable `u` of dimension 2
 traj = rand(NamedTrajectory, 5)
 traj.names
 
