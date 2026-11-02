@@ -3,7 +3,7 @@
 
 using NamedTrajectories
 
-# First we need to define number of timesteps and timestep
+# First we need to define number of knot points and timestep
 N = 10
 dt = 0.1
 
